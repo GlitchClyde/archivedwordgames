@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clyde’s Archive Word Game</title>
+<script src="words.js"></script>
+<style>
+  :root {
+    /* Palette hues. JS retunes --h (main color) and --ch (correct-letter color) to the background. */
+    --h: 218; --ch: 155; --s: 70%;
+    --blue: hsl(var(--h) var(--s) 52%);
+    --blue-deep: hsl(var(--h) var(--s) 30%);
+    --blue-edge: hsl(var(--h) 90% 77%);
+    --green: hsl(var(--ch) 68% 44%);
+    --green-deep: hsl(var(--ch) 85% 26%);
+    --green-edge: hsl(var(--ch) 80% 70%);
+    --absent: hsl(var(--h) 60% 6% / .64);
+    --focus: hsl(var(--h) 100% 84%);
+    --tint: .4;
+    --bg: url("background.png");
+    --tile: 54px;
+    --ease: cubic-bezier(.22,.8,.24,1);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { min-height: 100%; }
+  body {
+    min-height: 100vh; min-height: 100dvh;
+    font-family: var(--font); color: #fff; background: hsl(var(--h) 60% 12%);
+    display: flex; align-items: center; justify-content: center;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    user-select: none; -webkit-user-select: none;
+  }
+  #bg {
+    position: fixed; inset: 0; z-index: -1;
+    background: linear-gradient(hsl(var(--h) 70% 8% / .18), hsl(var(--h) 70% 8% / .4)), var(--bg) center / cover no-repeat, hsl(var(--h) 60% 12%);
+  }
+  button { font-family: inherit; color: inherit; cursor: pointer; }
+  button:disabled { cursor: default; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  /* ---------- Liquid glass ---------- */
+  .glass {
+    position: relative; isolation: isolate;
+    background:
+      linear-gradient(160deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,.05) 36%, rgba(255,255,255,.02) 64%, rgba(255,255,255,.17) 100%),
+      hsl(var(--h) 65% 15% / var(--tint));
+    -webkit-backdrop-filter: blur(22px) saturate(190%) brightness(1.06);
+    backdrop-filter: blur(22px) saturate(190%) brightness(1.06);
+    border: 1px solid rgba(255,255,255,.22);
+    box-shadow:
+      inset 0 1.5px 1px rgba(255,255,255,.8),
+      inset 0 -1.5px 1px rgba(255,255,255,.3),
+      inset 0 0 26px rgba(255,255,255,.1),
+      0 22px 55px hsl(var(--h) 80% 5% / .5);
+    text-shadow: 0 1px 6px rgba(0,0,0,.55);
+  }
+  .glass::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+    background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,255,255,0) 28%, rgba(255,255,255,0) 68%, rgba(255,255,255,.7));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .screen { display: none; width: 94%; max-width: 440px; flex-direction: column; align-items: center; margin: .8rem 0; }
+  .screen.active { display: flex; animation: screenIn .45s var(--ease) both; }
+  .panel { width: 100%; border-radius: 34px; padding: 1.4rem; display: flex; flex-direction: column; align-items: center; gap: .9rem; }
+  @keyframes screenIn { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+
+  .btn {
+    border-radius: 999px; padding: .7rem 1.4rem; font-size: 1rem; font-weight: 600;
+    background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.08));
+    border: 1px solid rgba(255,255,255,.38);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 6px 16px rgba(0,0,0,.28);
+    text-shadow: 0 1px 4px rgba(0,0,0,.5);
+    transition: transform .18s var(--ease), background .25s, box-shadow .25s, opacity .25s;
+  }
+  .btn:hover:not(:disabled) { background: linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.16)); transform: translateY(-1px); }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn.primary { background: linear-gradient(180deg, hsl(var(--h) 100% 70%), var(--blue-deep)); border-color: var(--blue-edge); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 22px hsl(var(--h) 80% 50% / .45); }
+  .btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, hsl(var(--h) 100% 76%), hsl(var(--h) var(--s) 36%)); }
+  .btn.danger { border-color: rgba(255,140,140,.6); background: linear-gradient(180deg, rgba(255,120,120,.4), rgba(160,30,50,.35)); }
+  .btn.wide { width: 100%; padding: .9rem 1.4rem; font-size: 1.1rem; }
+  .btn.small { padding: .38rem .9rem; font-size: .85rem; }
+  .btn:disabled { opacity: .5; }
+  .btn[hidden] { display: none; }
+  .pill { border-radius: 999px; padding: .38rem .85rem; font-size: .82rem; font-weight: 600; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.28); }
+
+  /* ---------- Menu, lobby, settings ---------- */
+  h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -.02em; text-align: center; line-height: 1.1; }
+  p.sub { text-align: center; opacity: .92; line-height: 1.4; max-width: 18rem; }
+  .menu-buttons { width: 100%; display: flex; flex-direction: column; gap: .7rem; }
+  .btn-pair { display: flex; gap: .6rem; }
+  .btn-pair .btn { flex: 1; padding: .6rem .5rem; font-size: .92rem; }
+  .head { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .head h2 { font-size: 1.35rem; font-weight: 800; }
+  .head .spacer { width: 4.4rem; }
+  .row-card { width: 100%; border-radius: 22px; padding: .85rem 1rem; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.24); display: flex; flex-direction: column; gap: .7rem; text-align: left; }
+  .row-card small { display: block; font-weight: 400; opacity: .85; font-size: .78rem; margin-top: .15rem; line-height: 1.35; }
+  .row-card b { font-size: 1rem; }
+  .toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: none; border: 0; width: 100%; text-align: left; }
+  .switch { flex: none; width: 52px; height: 32px; border-radius: 999px; background: rgba(255,255,255,.26); position: relative; transition: background .3s var(--ease); box-shadow: inset 0 1px 3px rgba(0,0,0,.3); }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); transition: transform .3s var(--ease); }
+  .toggle[aria-checked="true"] .switch { background: var(--blue); }
+  .toggle[aria-checked="true"] .switch::after { transform: translateX(20px); }
+  .slider-line { display: flex; align-items: center; gap: .8rem; }
+  .slider-line output { min-width: 2.6rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 28px; background: transparent; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(255,255,255,.12), hsl(var(--h) 90% 75% / .65)); border: 1px solid rgba(255,255,255,.35); }
+  input[type=range]::-moz-range-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(255,255,255,.12), hsl(var(--h) 90% 75% / .65)); border: 1px solid rgba(255,255,255,.35); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -10px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+  input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+  .seg { display: flex; gap: .5rem; }
+  .seg button { flex: 1; padding: .7rem 0; border-radius: 16px; font-size: 1.1rem; font-weight: 700; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3); transition: background .25s, transform .18s var(--ease), border-color .25s; }
+  .seg button[aria-checked="true"] { background: linear-gradient(180deg, hsl(var(--h) 100% 70%), var(--blue-deep)); border-color: var(--blue-edge); transform: translateY(-2px); }
+
+  /* ---------- Wordle board ---------- */
+  .stats { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: .4rem; }
+  .board { display: grid; gap: 7px; margin: .2rem 0; }
+  .row { display: grid; grid-template-columns: repeat(var(--cols, 5), var(--tile)); gap: 7px; }
+  .row.shake { animation: shake .5s var(--ease); }
+  .tile {
+    width: var(--tile); height: var(--tile); border-radius: calc(var(--tile) * .24);
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--tile) * .5); font-weight: 800; text-transform: uppercase;
+    background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.04)); border: 2px solid rgba(255,255,255,.3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.4);
+    transition: background .3s ease, border-color .3s ease, box-shadow .3s ease, color .3s ease;
+  }
+  .tile.filled { border-color: #fff; animation: pop .16s var(--ease); }
+  .tile.flip { animation: flip .6s cubic-bezier(.45,.05,.55,.95); will-change: transform; }
+  .tile.correct, .key.correct { background: linear-gradient(135deg, var(--green), var(--green-deep)); border-color: var(--green-edge); }
+  .tile.present, .key.present { background: linear-gradient(135deg, var(--blue), var(--blue-deep)); border-color: var(--blue-edge); }
+  .tile.absent, .key.absent { background: var(--absent); border-color: rgba(255,255,255,.12); color: rgba(255,255,255,.5); }
+  .tile.correct { box-shadow: 0 5px 18px hsl(var(--ch) 70% 45% / .5), inset 0 1px 0 rgba(255,255,255,.5); }
+  .tile.present { box-shadow: 0 5px 18px hsl(var(--h) 80% 55% / .55), inset 0 1px 0 rgba(255,255,255,.4); }
+  @keyframes pop { 50% { transform: scale(1.09); } }
+  @keyframes flip { 0% { transform: perspective(400px) rotateX(0); } 50% { transform: perspective(400px) rotateX(90deg); } 100% { transform: perspective(400px) rotateX(0); } }
+  @keyframes shake { 15%,55% { transform: translateX(-7px); } 35%,75% { transform: translateX(7px); } 100% { transform: none; } }
+
+  .keyboard { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+  .krow { display: flex; justify-content: center; gap: 5px; }
+  .key {
+    flex: 1; min-width: 0; height: 46px; border-radius: 10px; font-size: .95rem; font-weight: 700; text-transform: uppercase;
+    background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.08)); border: 1px solid rgba(255,255,255,.35);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 3px 8px rgba(0,0,0,.28);
+    transition: background .35s ease, transform .15s var(--ease), opacity .3s;
+  }
+  .key:active:not(:disabled) { transform: scale(.93); }
+  .key.wide { flex: 1.6; font-size: .75rem; }
+  .key.absent { opacity: .75; }
+
+  /* ---------- Hangman ---------- */
+  .gallows { width: 150px; height: 160px; stroke: rgba(255,255,255,.92); stroke-width: 4; stroke-linecap: round; fill: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
+  .gallows .frame { stroke: rgba(255,255,255,.55); }
+  .gallows .part { opacity: 0; transform-origin: center; transform: scale(.85); transition: opacity .35s ease, transform .35s var(--ease); }
+  .gallows .part.on { opacity: 1; transform: none; }
+  .hword { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; min-height: 48px; }
+  .slot { width: var(--slot, 30px); height: calc(var(--slot, 30px) * 1.3); display: flex; align-items: center; justify-content: center; font-size: calc(var(--slot, 30px) * .78); font-weight: 800; text-transform: uppercase; border-bottom: 3px solid rgba(255,255,255,.7); transition: color .3s; }
+  .slot.miss { color: hsl(0 90% 75%); }
+  .hkeys { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; width: 100%; }
+  .hkeys .key { flex: 0 0 calc((100% - 5px * 6) / 7); height: 42px; }
+
+  /* ---------- Notification banner ---------- */
+  .notice {
+    position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 50%; z-index: 30;
+    transform: translate(-50%, -170%); opacity: 0; transition: transform .55s var(--ease), opacity .3s ease;
+    border-radius: 22px; padding: .8rem 1.3rem; min-width: 14rem; max-width: 92vw; pointer-events: none;
+    display: flex; flex-direction: column; gap: .1rem;
+  }
+  .notice.show { transform: translate(-50%, 0); opacity: 1; }
+  .notice span { font-size: .85rem; opacity: .92; }
+  .notice.good { border-color: var(--green-edge); }
+  .notice.bad  { border-color: rgba(255,120,120,.85); }
+
+  /* ---------- Sheet ---------- */
+  .backdrop { position: fixed; inset: 0; background: hsl(var(--h) 80% 5% / .55); display: none; align-items: center; justify-content: center; z-index: 40; padding: 1rem; }
+  .backdrop.open { display: flex; animation: fade .3s ease both; }
+  .sheet { width: 100%; max-width: 360px; max-height: 92vh; overflow-y: auto; border-radius: 30px; padding: 1.6rem; text-align: center; display: flex; flex-direction: column; gap: .8rem; animation: rise .5s var(--ease) both; }
+  .sheet h2 { font-size: 1.6rem; font-weight: 800; }
+  .sheet p { line-height: 1.45; }
+  .sheet strong { font-weight: 800; letter-spacing: .08em; font-size: 1.12em; }
+  .sheet .actions { display: flex; flex-direction: column; gap: .6rem; margin-top: .4rem; }
+  .legend { display: flex; flex-direction: column; gap: .6rem; text-align: left; }
+  .legend h3 { font-size: 1rem; margin-top: .3rem; }
+  .legend div { display: flex; align-items: center; gap: .8rem; line-height: 1.3; font-size: .92rem; }
+  .legend .tile { --tile: 38px; flex: none; }
+  @keyframes rise { from { transform: translateY(34px) scale(.95); opacity: 0; } }
+  @keyframes fade { from { opacity: 0; } }
+
+  @media (max-height: 720px) { .key { height: 42px; } .gallows { width: 120px; height: 128px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+
+<main class="screen active" id="menu">
+  <div class="panel glass">
+    <h1>Archive Word Games</h1>
+    <p class="sub">Pick a game to play.</p>
+    <div class="menu-buttons">
+      <button class="btn primary wide" id="m-wordle">Wordle</button>
+      <button class="btn primary wide" id="m-hangman">Hangman</button>
+      <button class="btn wide" disabled>More games coming soon</button>
+      <div class="btn-pair">
+        <button class="btn" id="how">How to play</button>
+        <button class="btn" id="open-settings">Settings</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<section class="screen" id="lobby">
+  <div class="panel glass">
+    <div class="head"><button class="btn small" id="lobby-back">Back</button><h2>Wordle</h2><span class="spacer"></span></div>
+    <div class="row-card">
+      <div><b>Word length</b><small>How many letters are in the hidden word?</small></div>
+      <div class="seg" id="len-seg" role="radiogroup" aria-label="Word length"></div>
+    </div>
+    <p class="sub" id="lobby-hard"></p>
+    <button class="btn primary wide" id="start">Start game</button>
+    <button class="btn wide" id="resume" hidden>Resume game</button>
+  </div>
+</section>
+
+<section class="screen" id="settings">
+  <div class="panel glass">
+    <div class="head"><button class="btn small" id="settings-back">Back</button><h2>Settings</h2><span class="spacer"></span></div>
+    <div class="row-card">
+      <button class="toggle" id="hard" role="switch" aria-checked="false">
+        <span><b>Hard mode</b><small>Wordle only. Revealed hints must be used in every later guess. Applies to your next new game.</small></span>
+        <span class="switch"></span>
+      </button>
+    </div>
+    <div class="row-card">
+      <div><b>Glass Transparency</b><small>Slide to see more of the background through the glass.</small></div>
+      <div class="slider-line">
+        <input type="range" id="clear" min="0" max="100" step="1" aria-label="Glass transparency">
+        <output id="clear-out" for="clear"></output>
+      </div>
+    </div>
+    <div class="row-card">
+      <div><b>Background</b><small>Upload your own picture. The game colors will adjust to match it, and it stays on this device.</small></div>
+      <div class="btn-pair">
+        <button class="btn" id="upload">Upload image</button>
+        <button class="btn" id="default-bg">Use default</button>
+      </div>
+      <input type="file" id="file" accept="image/*" hidden>
+    </div>
+    <button class="btn danger wide" id="reset">Reset all settings</button>
+  </div>
+</section>
+
+<section class="screen" id="game">
+  <div class="panel glass">
+    <div class="stats">
+      <button class="btn small" id="to-menu">Menu</button>
+      <span class="pill" id="mode-pill">5 letters</span>
+      <span class="pill" id="left-pill">6 guesses left</span>
+    </div>
+    <div class="board" id="board" aria-label="Game board"></div>
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+</section>
+
+<section class="screen" id="hangman">
+  <div class="panel glass">
+    <div class="stats">
+      <button class="btn small" id="h-menu">Menu</button>
+      <span class="pill" id="h-len">0 letters</span>
+      <span class="pill" id="h-left">6 misses left</span>
+    </div>
+    <svg class="gallows" viewBox="0 0 150 160" aria-hidden="true">
+      <g class="frame"><path d="M15 150H85M35 150V12H100V30"/></g>
+      <circle class="part" cx="100" cy="44" r="14"/>
+      <path class="part" d="M100 58V100"/>
+      <path class="part" d="M100 70L80 88"/>
+      <path class="part" d="M100 70L120 88"/>
+      <path class="part" d="M100 100L84 128"/>
+      <path class="part" d="M100 100L116 128"/>
+    </svg>
+    <div class="hword" id="hword" aria-live="polite"></div>
+    <div class="hkeys" id="hkeys"></div>
+  </div>
+</section>
+
+<div class="notice glass" id="notice" role="status" aria-live="polite"></div>
+<div class="backdrop" id="backdrop">
+  <div class="sheet glass" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <h2 id="sheet-title"></h2><div id="sheet-body"></div><div class="actions" id="sheet-actions"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- Word lists (words.js): allowed[n] = valid guesses, answers[n] = secret words ---------- */
+const D = window.WORD_DATA || {};
+const split = s => String(s || "").toLowerCase().split(/\s+/).filter(Boolean);
+const ALLOWED = {}, ANS = {};
+for (let n = 5; n <= 16; n++) {
+  ALLOWED[n] = new Set(split(D.allowed && D.allowed[n]));
+  ANS[n] = split(D.answers && D.answers[n]).filter(w => w.length === n);
+  ANS[n].forEach(w => ALLOWED[n].add(w));      // every answer is also a legal guess
+}
+const WORDS_OK = [5, 6, 7, 8].every(n => ANS[n].length && ALLOWED[n].size);
+const HANG_WORDS = [6, 7, 8, 9, 10, 11, 12].flatMap(n => ANS[n]);
+
+const ROWS = 6, MISSES = 6;
+const DEFAULTS = { hard: false, clear: 55, len: 5 };
+let cfg = { ...DEFAULTS };
+let COLS = 5, target, gameHard = false, grid, row = 0, col = 0, over = true, busy = false, keyState, history = [], started = false, noticeTimer;
+let hword = "", hguess = new Set(), hmiss = 0, hover = true;
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+const boardEl = $("board"), noticeEl = $("notice"), backdrop = $("backdrop");
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+/* ---------- Screens & helpers ---------- */
+const SCREENS = ["menu", "lobby", "settings", "game", "hangman"];
+function show(id) {
+  SCREENS.forEach(s => $(s).classList.toggle("active", s === id));
+  if (id === "lobby") refreshLobby();
+  if (id === "game") fit();
+}
+const current = () => SCREENS.find(s => $(s).classList.contains("active"));
+const inProgress = () => started && !over;
+function msg(before, word, after) {
+  const p = document.createElement("p"), b = document.createElement("strong");
+  b.textContent = word.toUpperCase(); p.append(before, b, after); return p;
+}
+function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+
+function notify(title, body, kind) {
+  clearTimeout(noticeTimer);
+  noticeEl.className = "notice glass " + (kind || "");
+  noticeEl.innerHTML = "<strong></strong>" + (body ? "<span></span>" : "");
+  noticeEl.querySelector("strong").textContent = title;
+  if (body) noticeEl.querySelector("span").textContent = body;
+  void noticeEl.offsetWidth;
+  noticeEl.classList.add("show");
+  noticeTimer = setTimeout(() => noticeEl.classList.remove("show"), 2400);
+}
+let returnFocus = null;
+function closeSheet() { backdrop.classList.remove("open"); if (returnFocus && returnFocus.isConnected && returnFocus.offsetParent) returnFocus.focus(); }
+function openSheet(title, body, buttons) {
+  returnFocus = document.activeElement;
+  $("sheet-title").textContent = title;
+  const b = $("sheet-body"); b.innerHTML = "";
+  if (typeof body === "string") { const p = document.createElement("p"); p.textContent = body; b.appendChild(p); } else b.appendChild(body);
+  const actions = $("sheet-actions"); actions.innerHTML = "";
+  buttons.forEach((def, i) => {
+    const el = document.createElement("button");
+    el.className = "btn wide" + (i === 0 ? " primary" : "") + (def.danger ? " danger" : "");
+    el.textContent = def.label;
+    el.onclick = () => { closeSheet(); def.fn && def.fn(); };
+    actions.appendChild(el);
+  });
+  backdrop.classList.add("open"); actions.firstChild.focus();
+}
+
+/* Shared on-screen key builder */
+function makeKeys(container, rows, prefix, onKey) {
+  container.innerHTML = "";
+  rows.forEach(line => {
+    const r = document.createElement("div"); r.className = "krow";
+    [...line].forEach(ch => {
+      const b = document.createElement("button"); b.className = "key";
+      if (ch === ">") { b.textContent = "Enter"; b.dataset.key = "Enter"; b.classList.add("wide"); }
+      else if (ch === "<") { b.textContent = "Delete"; b.dataset.key = "Backspace"; b.classList.add("wide"); }
+      else { b.textContent = ch; b.dataset.key = ch; b.id = prefix + ch; }
+      b.onclick = () => onKey(b.dataset.key);
+      r.appendChild(b);
+    });
+    container.appendChild(r);
+  });
+}
+
+/* ---------- Adaptive palette (from the background image) ---------- */
+function setPalette(p) { root.style.setProperty("--h", p.h); root.style.setProperty("--ch", p.ch); }
+function derive(h) {
+  const d = Math.abs(((h - 155 + 540) % 360) - 180);      // distance from green
+  return { h: Math.round(h), ch: d < 45 ? 38 : 155 };       // keep "correct" distinct from the main hue
+}
+function dominantHue(img) {
+  const N = 48, c = document.createElement("canvas"); c.width = c.height = N;
+  const x = c.getContext("2d"); x.drawImage(img, 0, 0, N, N);
+  const px = x.getImageData(0, 0, N, N).data, bins = new Array(36).fill(0); let tot = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i] / 255, g = px[i + 1] / 255, b = px[i + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (d < .08) continue;
+    let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    const l = (mx + mn) / 2, w = d * (1 - Math.abs(2 * l - 1));   // colorful, mid-tone pixels count most
+    bins[Math.floor(h / 10) % 36] += w; tot += w;
+  }
+  if (tot < N * N * .01) return null;                          // basically grayscale
+  let best = 0, bi = 0;
+  for (let i = 0; i < 36; i++) { const v = bins[i] * 2 + bins[(i + 35) % 36] + bins[(i + 1) % 36]; if (v > best) { best = v; bi = i; } }
+  return bi * 10 + 5;
+}
+function adapt(url, save) {
+  const im = new Image();
+  im.onload = () => {
+    let h = null; try { h = dominantHue(im); } catch (e) {}      // file:// images can block pixel reads
+    const p = derive(h == null ? 218 : h);
+    setPalette(p);
+    if (save) store.set("cwg-pal", JSON.stringify(p));
+  };
+  im.src = url;
+}
+
+/* ---------- Settings ---------- */
+function applyClear() {
+  root.style.setProperty("--tint", (0.74 - 0.70 * cfg.clear / 100).toFixed(3));
+  $("clear").value = cfg.clear; $("clear-out").textContent = cfg.clear + "%";
+}
+function applyHard() { $("hard").setAttribute("aria-checked", cfg.hard); }
+function saveCfg() { store.set("cwg-settings", JSON.stringify(cfg)); }
+function setBg(url) { root.style.setProperty("--bg", url ? `url("${url}")` : 'url("background.png")'); }
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(store.get("cwg-settings") || "{}");
+    if (typeof s.hard === "boolean") cfg.hard = s.hard;
+    if (Number.isFinite(s.clear)) cfg.clear = Math.min(100, Math.max(0, s.clear));
+    if ([5, 6, 7, 8].includes(s.len)) cfg.len = s.len;
+  } catch (e) {}
+  const bg = store.get("cwg-bg"), pal = store.get("cwg-pal");
+  if (bg) setBg(bg);
+  try { if (pal) setPalette(JSON.parse(pal)); else adapt(bg || "background.png", !!bg); } catch (e) {}
+  applyClear(); applyHard();
+}
+$("hard").onclick = () => {
+  cfg.hard = !cfg.hard; applyHard(); saveCfg();
+  if (inProgress()) notify("Hard mode " + (cfg.hard ? "on" : "off"), "Takes effect on your next new Wordle game.");
+};
+$("clear").oninput = e => { cfg.clear = +e.target.value; applyClear(); };
+$("clear").onchange = saveCfg;
+$("upload").onclick = () => $("file").click();
+$("file").onchange = e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  if (!f.type.startsWith("image/")) return notify("Not an image", "Choose a JPG, PNG or WebP file.", "bad");
+  const url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {
+    const k = Math.min(1, 1920 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const data = c.toDataURL("image/jpeg", .85);
+    URL.revokeObjectURL(url);
+    setBg(data); adapt(data, true);
+    if (store.set("cwg-bg", data)) notify("Background updated", "Colors now match your picture.", "good");
+    else { store.del("cwg-pal"); notify("Background updated", "Too large to save, so it lasts until you close this page."); }
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); notify("Couldn’t read that image", "Try a different file.", "bad"); };
+  img.src = url;
+};
+$("default-bg").onclick = () => { store.del("cwg-bg"); store.del("cwg-pal"); setBg(null); adapt("background.png", false); notify("Default background restored", null, "good"); };
+$("reset").onclick = () => openSheet("Reset all settings?",
+  "Hard mode, word length, glass transparency and the background go back to their defaults. Your current game isn’t affected.",
+  [{ label: "Cancel" }, { label: "Reset", danger: true, fn: () => {
+    cfg = { ...DEFAULTS }; ["cwg-settings", "cwg-bg", "cwg-pal"].forEach(store.del);
+    setBg(null); setPalette({ h: 218, ch: 155 }); adapt("background.png", false); applyClear(); applyHard();
+    notify("Settings reset", null, "good");
+  } }]);
+
+/* ---------- Wordle ---------- */
+function fit() {   // size tiles so any word length fits the panel
+  const w = Math.min(window.innerWidth * .94, 440) - 48;
+  root.style.setProperty("--tile", Math.max(28, Math.min(54, Math.floor((w - 7 * (COLS - 1)) / COLS))) + "px");
+}
+function buildBoard() {
+  boardEl.innerHTML = ""; boardEl.style.setProperty("--cols", COLS);
+  for (let r = 0; r < ROWS; r++) {
+    const rowEl = document.createElement("div"); rowEl.className = "row"; rowEl.style.setProperty("--cols", COLS);
+    for (let c = 0; c < COLS; c++) { const t = document.createElement("div"); t.className = "tile"; t.id = `t-${r}-${c}`; rowEl.appendChild(t); }
+    boardEl.appendChild(rowEl);
+  }
+}
+function newGame() {
+  COLS = cfg.len; gameHard = cfg.hard;
+  target = ANS[COLS][Math.floor(Math.random() * ANS[COLS].length)];
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(""));
+  row = 0; col = 0; over = false; busy = false; keyState = {}; history = []; started = true;
+  $("mode-pill").textContent = COLS + " letters" + (gameHard ? " · Hard" : "");
+  buildBoard(); makeKeys($("keyboard"), ["qwertyuiop", "asdfghjkl", ">zxcvbnm<"], "k-", handleKey); updateLeft(); fit();
+}
+function updateLeft() { $("left-pill").textContent = plural(ROWS - row, "guess").replace("guesss", "guesses") + " left"; }
+function handleKey(key) {
+  if (over || busy) return;
+  if (key === "Enter") return submit();
+  if (key === "Backspace") { if (col > 0) { col--; grid[row][col] = ""; paint(row, col); } return; }
+  if (/^[a-z]$/i.test(key) && col < COLS) { grid[row][col] = key.toLowerCase(); paint(row, col); col++; }
+}
+function paint(r, c) { const t = $(`t-${r}-${c}`); t.textContent = grid[r][c]; t.classList.toggle("filled", !!grid[r][c]); }
+function reject(title, body) {
+  notify(title, body, "bad");
+  const el = boardEl.children[row]; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+}
+function score(guess, tgt) {   // greens first, then "present" from the remaining letters
+  const out = Array(COLS).fill("absent"), bag = {};
+  for (let i = 0; i < COLS; i++) { if (guess[i] === tgt[i]) out[i] = "correct"; else bag[tgt[i]] = (bag[tgt[i]] || 0) + 1; }
+  for (let i = 0; i < COLS; i++) { if (out[i] === "absent" && bag[guess[i]] > 0) { out[i] = "present"; bag[guess[i]]--; } }
+  return out;
+}
+function hardCheck(guess) {
+  const ord = n => n + 1 + (["st", "nd", "rd"][n] || "th");
+  for (const h of history) {
+    for (let i = 0; i < COLS; i++)
+      if (h.colors[i] === "correct" && guess[i] !== h.guess[i]) return `${ord(i)} letter must be ${h.guess[i].toUpperCase()}`;
+    const need = {};
+    h.colors.forEach((c, i) => { if (c !== "absent") need[h.guess[i]] = (need[h.guess[i]] || 0) + 1; });
+    for (const [ch, n] of Object.entries(need)) if (guess.split(ch).length - 1 < n) return `Guess must contain ${ch.toUpperCase()}`;
+  }
+  return null;
+}
+function submit() {
+  if (col < COLS) return reject("Not enough letters");
+  const guess = grid[row].join("");
+  if (!ALLOWED[COLS].has(guess)) return reject("Not in word list", `“${guess.toUpperCase()}” isn’t a valid word.`);
+  if (gameHard) { const err = hardCheck(guess); if (err) return reject("Hard mode", err); }
+
+  const colors = score(guess, target);
+  history.push({ guess, colors });
+  busy = true;
+  const r = row, rank = { absent: 1, present: 2, correct: 3 }, STEP = 260;
+  colors.forEach((state, i) => setTimeout(() => {
+    const t = $(`t-${r}-${i}`); t.classList.add("flip");
+    setTimeout(() => t.classList.add(state), 300);          // recolor at the flip's midpoint
+  }, i * STEP));
+
+  setTimeout(() => {
+    colors.forEach((state, i) => { const ch = guess[i]; if (!keyState[ch] || rank[state] > rank[keyState[ch]]) keyState[ch] = state; });
+    Object.entries(keyState).forEach(([ch, st]) => { const k = $("k-" + ch); if (k) k.className = "key " + st; });
+    busy = false;
+    const after = [{ label: "Play again", fn: newGame }, { label: "Main menu", fn: () => show("menu") }];
+    if (guess === target) {
+      over = true; const n = r + 1;
+      notify("Nice!", `Solved in ${plural(n, "guess").replace("guesss", "guesses")}.`, "good");
+      setTimeout(() => openSheet("You won", msg("The word was ", target, `. You solved it in ${plural(n, "guess").replace("guesss", "guesses")}.`), after), 900);
+    } else if (r === ROWS - 1) {
+      over = true;
+      setTimeout(() => openSheet("Out of guesses", msg("The word was ", target, ". Give it another go."), after), 500);
+    } else {
+      const left = ROWS - r - 1; notify("Try again", `${plural(left, "guess").replace("guesss", "guesses")} left.`, "bad");
+    }
+  }, (COLS - 1) * STEP + 650);
+  row++; col = 0; updateLeft();
+}
+
+/* Lobby */
+function refreshLobby() {
+  const seg = $("len-seg"); seg.innerHTML = "";
+  [5, 6, 7, 8].forEach(n => {
+    const b = document.createElement("button"); b.textContent = n; b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", cfg.len === n); b.setAttribute("aria-label", n + " letters");
+    b.onclick = () => { cfg.len = n; saveCfg(); refreshLobby(); seg.children[n - 5].focus(); };
+    seg.appendChild(b);
+  });
+  $("lobby-hard").textContent = "Hard mode is " + (cfg.hard ? "on" : "off") + ". Change it in Settings.";
+  $("resume").hidden = !inProgress();
+  $("resume").textContent = "Resume game (" + COLS + " letters)";
+  $("start").disabled = !WORDS_OK;
+}
+const startWordle = () => { newGame(); show("game"); };
+$("m-wordle").onclick = () => {
+  if (!WORDS_OK) return notify("Word list missing", "Keep words.js in the same folder as this page.", "bad");
+  show("lobby");
+};
+$("start").onclick = () => inProgress()
+  ? openSheet("Start a new game?", "Your current Wordle game will be lost.", [{ label: "Cancel" }, { label: "New game", fn: startWordle }])
+  : startWordle();
+$("resume").onclick = () => show("game");
+$("lobby-back").onclick = () => { show("menu"); $("m-wordle").focus(); };
+$("to-menu").onclick = () => { show("menu"); $("m-wordle").focus(); };
+
+/* ---------- Hangman ---------- */
+function newHangman() {
+  const pool = HANG_WORDS.length ? HANG_WORDS : ANS[5];
+  hword = pool[Math.floor(Math.random() * pool.length)];
+  hguess = new Set(); hmiss = 0; hover = false;
+  makeKeys($("hkeys"), ["abcdefghijklmnopqrstuvwxyz"], "h-", hangKey);
+  $("hkeys").firstChild.style.display = "contents";
+  $("h-len").textContent = hword.length + " letters";
+  const w = Math.min(window.innerWidth * .94, 440) - 48;
+  $("hword").style.setProperty("--slot", Math.max(18, Math.min(34, Math.floor((w - 6 * (hword.length - 1)) / hword.length))) + "px");
+  renderHang();
+}
+function renderHang(reveal) {
+  $("hword").innerHTML = "";
+  [...hword].forEach(ch => {
+    const s = document.createElement("span"); s.className = "slot";
+    if (hguess.has(ch)) s.textContent = ch; else if (reveal) { s.textContent = ch; s.classList.add("miss"); }
+    $("hword").appendChild(s);
+  });
+  document.querySelectorAll(".gallows .part").forEach((p, i) => p.classList.toggle("on", i < hmiss));
+  $("h-left").textContent = plural(MISSES - hmiss, "miss").replace("missz", "misses").replace("miss" + "s", "miss") + " left";
+  $("h-left").textContent = (MISSES - hmiss) + ((MISSES - hmiss) === 1 ? " miss left" : " misses left");
+}
+function hangKey(ch) {
+  if (hover || hguess.has(ch)) return;
+  hguess.add(ch);
+  const k = $("h-" + ch), hit = hword.includes(ch);
+  k.className = "key " + (hit ? "correct" : "absent"); k.disabled = true;
+  if (!hit) hmiss++;
+  const won = [...hword].every(c => hguess.has(c)), lost = hmiss >= MISSES;
+  renderHang(lost);
+  if (won || lost) {
+    hover = true;
+    const after = [{ label: "Play again", fn: newHangman }, { label: "Main menu", fn: () => show("menu") }];
+    setTimeout(() => won
+      ? openSheet("You won", msg("You found ", hword, ` with ${plural(hmiss, "misses").replace("missz", "misses")}.`.replace("1 miss.", "1 miss.")), after)
+      : openSheet("Out of misses", msg("The word was ", hword, ". Give it another go."), after), 700);
+  }
+}
+$("m-hangman").onclick = () => {
+  if (!HANG_WORDS.length && !ANS[5].length) return notify("Word list missing", "Keep words.js in the same folder as this page.", "bad");
+  if (hover) newHangman();
+  show("hangman");
+};
+$("h-menu").onclick = () => { show("menu"); $("m-hangman").focus(); };
+
+/* ---------- Menu, instructions, keyboard ---------- */
+$("open-settings").onclick = () => { show("settings"); $("settings-back").focus(); };
+$("settings-back").onclick = () => { show("menu"); $("open-settings").focus(); };
+$("how").onclick = () => {
+  const box = document.createElement("div"); box.className = "legend";
+  const mk = (cls, ch, text) => {
+    const d = document.createElement("div"), t = document.createElement("div"), s = document.createElement("span");
+    t.className = "tile " + cls; t.textContent = ch; s.textContent = text; d.append(t, s); return d;
+  };
+  const p = t => { const e = document.createElement("p"); e.style.textAlign = "left"; e.textContent = t; return e; };
+  const h = t => { const e = document.createElement("h3"); e.textContent = t; return e; };
+  box.append(h("Wordle"),
+    p("Guess the word in six tries. Pick 5 to 8 letters before you start. Every guess must be a real word."),
+    mk("correct", "A", "Right letter, right spot."),
+    mk("present", "B", "The letter is in the word, but in a different spot."),
+    mk("absent", "C", "The letter isn’t in the word."),
+    p("Hard mode: every hint you uncover must be used in your next guess."),
+    h("Hangman"),
+    p("Pick letters to uncover the hidden word. Each wrong letter adds a part to the drawing, and six misses end the game."));
+  openSheet("How to play", box, [{ label: "Got it" }]);
+};
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && backdrop.classList.contains("open")) { closeSheet(); return; }
+  if (backdrop.classList.contains("open") || e.ctrlKey || e.metaKey || e.altKey) return;
+  const scr = current();
+  if (scr === "game") {
+    if (e.key === "Enter" || e.key === "Backspace") { e.preventDefault(); handleKey(e.key); }
+    else if (/^[a-z]$/i.test(e.key)) handleKey(e.key);
+  } else if (scr === "hangman" && /^[a-z]$/i.test(e.key)) hangKey(e.key.toLowerCase());
+});
+window.addEventListener("resize", () => { if (current() === "game") fit(); });
+
+loadSettings();
+if (!WORDS_OK) notify("Word list missing", "Keep words.js in the same folder as this page.", "bad");
+</script>
+</body>
+</html>
