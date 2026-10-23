@@ -71,7 +71,7 @@
   .glass::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
     background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,255,255,0) 28%, rgba(255,255,255,0) 68%, rgba(255,255,255,.65));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
   }
   .screen { display: none; width: 94%; max-width: 440px; flex-direction: column; align-items: center; margin: .8rem 0; }
@@ -113,6 +113,51 @@
   .orb.c { left: 30vw; top: 38vh; width: 30vmax; height: 30vmax; opacity: .3; animation-duration: 40s; animation-delay: -18s; }
   @keyframes orbDrift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(9vw, 7vh, 0) scale(1.18); } }
   @media (prefers-reduced-motion: reduce) { #fx { display: none; } h1.hero, #play { animation: none; } }
+
+  /* Game logos (inline SVG sprite) */
+  .ic { width: 1.25em; height: 1.25em; flex: none; vertical-align: -.25em; }
+  .gic { width: 46px; height: 46px; flex: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.45)); }
+  .ic-s { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .ic-g { fill: var(--green); stroke: var(--green-edge); stroke-width: 1.5; }
+  .ic-b { fill: var(--blue); stroke: var(--blue-edge); stroke-width: 1.5; }
+  .ic-w { fill: rgba(255,255,255,.2); stroke: rgba(255,255,255,.85); stroke-width: 1.5; }
+  .ic-f { fill: #fff; stroke: none; }
+  .title-logos { display: flex; justify-content: center; gap: .9rem; }
+  .title-logos .gic { width: 40px; height: 40px; }
+  .btn.game { flex-direction: row !important; justify-content: flex-start; text-align: left; gap: 1rem; }
+  .btn.game .gtxt { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+  .head h2 { display: flex; align-items: center; gap: .55rem; }
+  .head h2 .ic { width: 1.4em; height: 1.4em; }
+  .btn.small .ic { width: 1.15em; height: 1.15em; margin-right: .3rem; }
+  a { color: #fff; }
+  /* Scores and counters: bold and easy to read */
+  .pill { font-weight: 800; color: #fff; }
+  .pill.score { font-size: 1.05rem; font-weight: 900; letter-spacing: .02em; padding: .42rem 1rem; background: rgba(255,255,255,.26); border-color: rgba(255,255,255,.65); text-shadow: 0 1px 4px rgba(0,0,0,.75); }
+  .sheet p b { font-weight: 900; font-size: 1.15em; }
+  .sheet .scoreline { font-size: 1.15rem; font-weight: 900; }
+  /* How to play: its own page, instructions separated into 3 columns */
+  #howto { max-width: 1040px; }
+  .how-grid, .how-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; width: 100%; }
+  .how-card { gap: .6rem; }
+  .how-card h3 { font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: .6rem; }
+  .how-card h4 { font-size: .95rem; font-weight: 800; opacity: .95; }
+  .how-card ol { padding-left: 1.2rem; display: flex; flex-direction: column; gap: .4rem; line-height: 1.4; font-size: .92rem; }
+  .how-card p { line-height: 1.45; font-size: .92rem; }
+  .how-col { display: flex; flex-direction: column; gap: .55rem; min-width: 0; padding: .2rem .1rem; }
+  .how-col + .how-col { border-left: 1px solid rgba(255,255,255,.18); padding-left: .9rem; }
+  .how-leg { display: flex; align-items: center; gap: .7rem; line-height: 1.3; font-size: .92rem; }
+  .how-leg .tile { --tile: 38px; flex: none; }
+  @media (max-width: 760px) {
+    .how-grid, .how-cols { grid-template-columns: 1fr; }
+    .how-col + .how-col { border-left: 0; padding-left: .1rem; border-top: 1px solid rgba(255,255,255,.18); padding-top: .7rem; }
+  }
+  /* About page extras */
+  .avatar { width: 132px; height: 132px; border-radius: 50%; object-fit: cover; align-self: center; border: 3px solid rgba(255,255,255,.9); box-shadow: 0 8px 26px rgba(0,0,0,.5); user-select: none; }
+  .wlink { color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255,255,255,.6); }
+  .wlink:hover { text-decoration-color: #fff; }
+  .contact-links { display: flex; flex-direction: column; gap: .35rem; }
+  .btn-trio { display: flex; flex-wrap: wrap; gap: .6rem; width: 100%; }
+  .btn-trio .btn { flex: 1 1 7rem; padding: .6rem .5rem; font-size: .92rem; }
   #wordsearch { max-width: var(--wsmax, 440px); }
   @media (max-width: 480px) { #game .panel, #wordsearch .panel { padding: 1rem .7rem; } }
   .panel { width: 100%; border-radius: 34px; padding: 1.4rem; display: flex; flex-direction: column; align-items: center; gap: .9rem; }
@@ -279,6 +324,30 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="ic-wordle" viewBox="0 0 48 48">
+      <rect class="ic-g" x="3" y="3" width="11" height="11" rx="3"/><rect class="ic-b" x="18.5" y="3" width="11" height="11" rx="3"/><rect class="ic-w" x="34" y="3" width="11" height="11" rx="3"/>
+      <rect class="ic-b" x="3" y="18.5" width="11" height="11" rx="3"/><rect class="ic-g" x="18.5" y="18.5" width="11" height="11" rx="3"/><rect class="ic-g" x="34" y="18.5" width="11" height="11" rx="3"/>
+      <rect class="ic-g" x="3" y="34" width="11" height="11" rx="3"/><rect class="ic-g" x="18.5" y="34" width="11" height="11" rx="3"/><rect class="ic-g" x="34" y="34" width="11" height="11" rx="3"/>
+    </symbol>
+    <symbol id="ic-hangman" viewBox="0 0 48 48">
+      <path class="ic-s" d="M6 43h22M13 43V6h20v7"/>
+      <circle class="ic-s" cx="33" cy="19" r="5"/>
+      <path class="ic-s" d="M33 24v10M33 28l-6 5M33 28l6 5M33 34l-5 8M33 34l5 8"/>
+    </symbol>
+    <symbol id="ic-anagram" viewBox="0 0 48 48">
+      <path class="ic-s" d="M5 15h7c9 0 13 18 22 18h6M34 26l7 7-7 7M5 33h7c3 0 6-2 9-6M27 21c2-3 4-6 7-6h6M34 8l7 7-7 7"/>
+    </symbol>
+    <symbol id="ic-wordsearch" viewBox="0 0 48 48">
+      <circle class="ic-s" cx="20" cy="20" r="13"/>
+      <path class="ic-s" d="M30 30l13 13"/>
+      <path class="ic-s" d="M13 26l14-12" style="stroke:var(--green-edge)"/>
+      <circle class="ic-f" cx="13" cy="26" r="2.2"/><circle class="ic-f" cx="27" cy="14" r="2.2"/><circle class="ic-f" cx="20" cy="20" r="1.6"/>
+    </symbol>
+    <symbol id="ic-menu" viewBox="0 0 24 24"><path class="ic-s" style="stroke-width:2.4" d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </defs>
+</svg>
 <div id="bg"></div>
 <div id="fx" aria-hidden="true"><span class="orb a"></span><span class="orb b"></span><span class="orb c"></span></div>
 
@@ -288,6 +357,7 @@
 
 <main class="screen active" id="title">
   <div class="panel glass title-panel">
+    <div class="title-logos" aria-hidden="true"><svg class="gic" aria-hidden="true"><use href="#ic-wordle"/></svg><svg class="gic" aria-hidden="true"><use href="#ic-hangman"/></svg><svg class="gic" aria-hidden="true"><use href="#ic-anagram"/></svg><svg class="gic" aria-hidden="true"><use href="#ic-wordsearch"/></svg></div>
     <h1 class="hero">Archive Word Games!</h1>
     <button class="btn primary wide" id="play">Play</button>
   </div>
@@ -295,26 +365,26 @@
 
 <main class="screen" id="menu">
   <div class="panel glass">
-    <h1>Archive Word Games!</h1>
+    <h1>Archive Word Games</h1>
     <p class="sub">Pick a game to start.</p>
     <div class="menu-buttons">
-      <button class="btn primary wide game" id="m-wordle"><b>Wordle</b><small>Guess the word in six tries. 5 to 16 letters.</small></button>
-      <button class="btn primary wide game" id="m-hangman"><b>Hangman</b><small>Uncover the word before six misses. You pick the length.</small></button>
-      <button class="btn primary wide game" id="m-anagram"><b>Anagram</b><small>Unscramble the letters into a word.</small></button>
-      <button class="btn primary wide game" id="m-wordsearch"><b>Word Search</b><small>Find the hidden words. You pick how many.</small></button>
+      <button class="btn primary wide game" id="m-wordle"><svg class="gic" aria-hidden="true"><use href="#ic-wordle"/></svg><span class="gtxt"><b>Wordle</b><small>Guess the word in six tries. 5 to 16 letters.</small></span></button>
+      <button class="btn primary wide game" id="m-hangman"><svg class="gic" aria-hidden="true"><use href="#ic-hangman"/></svg><span class="gtxt"><b>Hangman</b><small>Uncover the word before six misses. You pick the length.</small></span></button>
+      <button class="btn primary wide game" id="m-anagram"><svg class="gic" aria-hidden="true"><use href="#ic-anagram"/></svg><span class="gtxt"><b>Anagram</b><small>Unscramble the letters into a word.</small></span></button>
+      <button class="btn primary wide game" id="m-wordsearch"><svg class="gic" aria-hidden="true"><use href="#ic-wordsearch"/></svg><span class="gtxt"><b>Word Search</b><small>Find the hidden words. You pick how many.</small></span></button>
       <div class="btn-pair">
         <button class="btn" id="how">How to play</button>
         <button class="btn" id="open-settings">Settings</button>
         <button class="btn" id="open-about">About</button>
       </div>
-      <button class="btn small ghost" id="home">Back to title</button>
+      <button class="btn small ghost" id="home">Back to Title</button>
     </div>
   </div>
 </main>
 
 <section class="screen" id="lobby">
   <div class="panel glass">
-    <div class="head"><button class="btn small" id="lobby-back">Back</button><h2>Wordle</h2><span class="spacer"></span></div>
+    <div class="head"><button class="btn small" id="lobby-back">Back</button><h2><svg class="ic" aria-hidden="true"><use href="#ic-wordle"/></svg>Wordle</h2><span class="spacer"></span></div>
     <div class="row-card">
       <div><b>Word length</b><small>How many letters are in the hidden word?</small></div>
       <div class="slider-line">
@@ -328,14 +398,14 @@
         <span class="switch"></span>
       </button>
     </div>
-    <button class="btn primary wide" id="start">Start game</button>
-    <button class="btn wide" id="resume" hidden>Resume game</button>
+    <button class="btn primary wide" id="start">Start Game</button>
+    <button class="btn wide" id="resume" hidden>Resume Game</button>
   </div>
 </section>
 
 <section class="screen" id="hlobby">
   <div class="panel glass">
-    <div class="head"><button class="btn small" id="hlobby-back">Back</button><h2>Hangman</h2><span class="spacer"></span></div>
+    <div class="head"><button class="btn small" id="hlobby-back">Back</button><h2><svg class="ic" aria-hidden="true"><use href="#ic-hangman"/></svg>Hangman</h2><span class="spacer"></span></div>
     <div class="row-card">
       <div><b>Word length</b><small>How many letters are in the hidden word?</small></div>
       <div class="slider-line">
@@ -343,14 +413,14 @@
         <output id="hlen-out" for="hlen"></output>
       </div>
     </div>
-    <button class="btn primary wide" id="h-start">Start game</button>
-    <button class="btn wide" id="h-resume" hidden>Resume game</button>
+    <button class="btn primary wide" id="h-start">Start Game</button>
+    <button class="btn wide" id="h-resume" hidden>Resume Game</button>
   </div>
 </section>
 
 <section class="screen" id="wslobby">
   <div class="panel glass">
-    <div class="head"><button class="btn small" id="wslobby-back">Back</button><h2>Word Search</h2><span class="spacer"></span></div>
+    <div class="head"><button class="btn small" id="wslobby-back">Back</button><h2><svg class="ic" aria-hidden="true"><use href="#ic-wordsearch"/></svg>Word Search</h2><span class="spacer"></span></div>
     <div class="row-card">
       <div><b>Number of words</b><small>How many words are hidden in the grid? The grid grows with the count.</small></div>
       <div class="slider-line">
@@ -359,8 +429,63 @@
       </div>
       <small id="wsn-hint" style="margin:0"></small>
     </div>
-    <button class="btn primary wide" id="ws-start">Start game</button>
-    <button class="btn wide" id="ws-resume" hidden>Resume game</button>
+    <button class="btn primary wide" id="ws-start">Start Game</button>
+    <button class="btn wide" id="ws-resume" hidden>Resume Game</button>
+  </div>
+</section>
+
+<section class="screen" id="howto">
+  <div class="panel glass">
+    <div class="head"><button class="btn small" id="howto-back">Back</button><h2>How to play</h2><span class="spacer"></span></div>
+    <article class="row-card how-card">
+      <h3><svg class="gic" aria-hidden="true"><use href="#ic-wordle"/></svg>Wordle</h3>
+      <div class="how-cols">
+        <div class="how-col">
+          <h4>Goal</h4>
+          <ol>
+            <li>Slide to pick from 5 to 16 letters before you start.</li>
+            <li>Type or tap a real dictionary word, then press Enter.</li>
+            <li>Find the hidden word in six tries.</li>
+          </ol>
+        </div>
+        <div class="how-col">
+          <h4>Colours</h4>
+          <div class="how-leg"><div class="tile correct">A</div><span>Right letter, right spot.</span></div>
+          <div class="how-leg"><div class="tile present">B</div><span>The letter is in the word, but in a different spot.</span></div>
+          <div class="how-leg"><div class="tile absent">C</div><span>The letter is not in the word.</span></div>
+        </div>
+        <div class="how-col">
+          <h4>Hard mode</h4>
+          <p>Switch it on at the Wordle screen before you start. Every hint you uncover must be used in your next guess.</p>
+        </div>
+      </div>
+    </article>
+    <div class="how-grid">
+      <article class="row-card how-card">
+        <h3><svg class="gic" aria-hidden="true"><use href="#ic-hangman"/></svg>Hangman</h3>
+        <ol>
+          <li>Slide to pick from 5 to 16 letters.</li>
+          <li>Tap letters, or type on your keyboard, to uncover the hidden word.</li>
+          <li>Six wrong letters end the game.</li>
+        </ol>
+      </article>
+      <article class="row-card how-card">
+        <h3><svg class="gic" aria-hidden="true"><use href="#ic-anagram"/></svg>Anagram</h3>
+        <ol>
+          <li>Tap or type the letters in order to spell a valid word.</li>
+          <li>Longer words score more. Hints cost points.</li>
+          <li>Skipping a word resets your streak.</li>
+        </ol>
+      </article>
+      <article class="row-card how-card">
+        <h3><svg class="gic" aria-hidden="true"><use href="#ic-wordsearch"/></svg>Word Search</h3>
+        <ol>
+          <li>Choose how many words (3 to 15) are hidden. The grid grows with the count.</li>
+          <li>Drag across the letters, or tap the first and last letter.</li>
+          <li>Find every word on the list to clear the grid.</li>
+        </ol>
+      </article>
+    </div>
   </div>
 </section>
 
@@ -369,19 +494,32 @@
     <div class="head"><button class="btn small" id="about-back">Back</button><h2>About</h2><span class="spacer"></span></div>
     <div class="row-card">
       <b>About this game</b>
-      <p class="about-text"><b>Archive Word Games!</b> is the passion project of <b>Clyde Justine Nate</b>. It is an ongoing project: more word games are being added over time, and some are still in development.</p>
+      <p class="about-text"><b>Archive Word Games</b> is a passion project created by <b>Clyde Justine Nate</b>. Note: This is an ongoing project: more word games are being developed over time.</p>
     </div>
     <div class="row-card">
+      <img class="avatar" src="clyde.jpg" alt="Photo of Clyde Justine Nate" width="132" height="132" draggable="false">
       <b>About the creator</b>
-      <p class="about-text">BS Computer Science graduate (Cum Laude), IT Instructor at STI College Naga, and a Master of Science in Information Systems student at UP Open University.</p>
+      <p class="about-text">He is BS Computer Science graduate (Cum Laude) and currently a Master of Science in Information Systems student at UP Open University.</p>
     </div>
     <div class="row-card">
       <b>Contact</b>
-      <p class="contact-line">Naga City, Camarines Sur, Philippines<br>clydeernate@gmail.com<br>linkedin.com/in/clydejustinenate</p>
-      <div class="btn-pair">
+      <p class="contact-line">Naga City, Camarines Sur, Philippines</p>
+      <div class="contact-links contact-line">
+        <a class="wlink" href="mailto:clydeernate@gmail.com">clydeernate@gmail.com</a>
+        <a class="wlink" href="https://linkedin.com/in/clydejustinenate" target="_blank" rel="noopener noreferrer">linkedin.com/in/clydejustinenate</a>
+        <a class="wlink" href="https://github.com/GlitchClyde" target="_blank" rel="noopener noreferrer">github.com/GlitchClyde</a>
+      </div>
+      <div class="btn-trio">
         <a class="btn" href="mailto:clydeernate@gmail.com">Email</a>
         <a class="btn" href="https://linkedin.com/in/clydejustinenate" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        <a class="btn" href="https://github.com/GlitchClyde" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
+    </div>
+    <div class="row-card">
+      <b>Source code</b>
+      <p class="about-text">Archive Word Games is available on GitHub.</p>
+      <a class="wlink contact-line" href="https://github.com/GlitchClyde/clydesarchive" target="_blank" rel="noopener noreferrer">github.com/GlitchClyde/clydesarchive</a>
+      <a class="btn" href="https://github.com/GlitchClyde/clydesarchive" target="_blank" rel="noopener noreferrer">View the repository</a>
     </div>
   </div>
 </section>
@@ -424,7 +562,7 @@
       </div>
     </div>
     <div class="row-card">
-      <div><b>Background image</b><small>Upload your own picture. Colors adapt automatically.</small></div>
+      <div><b>Background image</b><small>Upload your own picture. Colors will adapt based on the image uploaded.</small></div>
       <div class="btn-pair">
         <button class="btn" id="upload">Upload image</button>
         <button class="btn" id="default-bg">Use default</button>
@@ -438,9 +576,9 @@
 <section class="screen" id="game">
   <div class="panel glass">
     <div class="stats">
-      <button class="btn small" id="to-menu">Menu</button>
+      <button class="btn small" id="to-menu"><svg class="ic" aria-hidden="true"><use href="#ic-wordle"/></svg>Menu</button>
       <span class="pill" id="mode-pill">5 letters</span>
-      <span class="pill" id="left-pill">6 guesses left</span>
+      <span class="pill score" id="left-pill">6 guesses left</span>
     </div>
     <div class="board" id="board" role="grid" aria-label="Wordle board"></div>
     <div class="keyboard" id="keyboard"></div>
@@ -450,9 +588,9 @@
 <section class="screen" id="hangman">
   <div class="panel glass">
     <div class="stats">
-      <button class="btn small" id="h-menu">Menu</button>
+      <button class="btn small" id="h-menu"><svg class="ic" aria-hidden="true"><use href="#ic-hangman"/></svg>Menu</button>
       <span class="pill" id="h-len">0 letters</span>
-      <span class="pill" id="h-left">6 misses left</span>
+      <span class="pill score" id="h-left">6 misses left</span>
     </div>
     <svg class="gallows" viewBox="0 0 150 160" role="img" aria-label="Hangman drawing">
       <g class="frame"><path d="M15 150H85M35 150V12H100V30"/></g>
@@ -471,7 +609,7 @@
 
 <section class="screen" id="anagram">
   <div class="panel glass">
-    <div class="stats"><button class="btn small" id="an-menu">Menu</button><span class="pill" id="an-score">Score 0</span><span class="pill" id="an-streak">Streak 0</span></div>
+    <div class="stats"><button class="btn small" id="an-menu"><svg class="ic" aria-hidden="true"><use href="#ic-anagram"/></svg>Menu</button><span class="pill score" id="an-score">Score 0</span><span class="pill score" id="an-streak">Streak 0</span></div>
     <p class="sub" id="an-info"></p>
     <div class="an-row" id="an-answer" aria-label="Your answer"></div>
     <div class="an-row" id="an-pool" role="group" aria-label="Scrambled letters"></div>
@@ -482,7 +620,7 @@
 
 <section class="screen" id="wordsearch">
   <div class="panel glass">
-    <div class="stats"><button class="btn small" id="ws-menu">Menu</button><span class="pill" id="ws-count"></span><button class="btn small" id="ws-new">New grid</button></div>
+    <div class="stats"><button class="btn small" id="ws-menu"><svg class="ic" aria-hidden="true"><use href="#ic-wordsearch"/></svg>Menu</button><span class="pill score" id="ws-count"></span><button class="btn small" id="ws-new">New grid</button></div>
     <div class="ws-list" id="ws-list"></div>
     <div class="ws-grid" id="ws-grid" role="grid" aria-label="Word search grid"></div>
     <p class="sub" style="font-size:.85rem;opacity:.85">Drag across letters, or tap the first and last letter.</p>
@@ -588,13 +726,13 @@ async function share(won) {
   catch (e) { notify("Couldn’t copy", "Please copy manually.", "bad"); }
 }
 function endSheet(title, bodyEl, won) {
-  const st = recordResult(won), p = document.createElement("p"); p.style.cssText = "font-size:.9rem;opacity:.9;margin-top:.4rem"; p.textContent = statLine(st);
+  const st = recordResult(won), p = document.createElement("p"); p.style.cssText = "font-size:1rem;margin-top:.4rem"; p.innerHTML = `Played <b>${st.played}</b> · Won <b>${st.won}</b> · Streak <b>${st.streak}</b> · Best <b>${st.best}</b>`;
   const box = document.createElement("div"); box.append(bodyEl, p);
   openSheet(title, box, [{ label: "Play again", fn: newGame }, { label: "Change length", fn: () => show("lobby") }, { label: "Share result", keep: true, fn: () => share(won) }, { label: "Main menu", fn: () => show("menu") }]);
 }
 
 /* Screens & Dialogs */
-const SCREENS = ["title", "menu", "about", "lobby", "hlobby", "wslobby", "settings", "game", "hangman", "anagram", "wordsearch"];
+const SCREENS = ["title", "menu", "about", "howto", "lobby", "hlobby", "wslobby", "settings", "game", "hangman", "anagram", "wordsearch"];
 function show(id) {
   SCREENS.forEach(s => $(s).classList.toggle("active", s === id));
   if (id === "lobby") refreshLobby();
@@ -1104,6 +1242,12 @@ KEYS.hangman = e => { if (/^[a-z]$/i.test(e.key)) hangKey(e.key.toLowerCase()); 
     if (S.used.length === S.word.length) check();
   }
   function back() { if (!S.over && S.used.length) { S.used.pop(); FX.tap(); render(); } }
+  function withScore(p) {
+    const box = document.createElement("div"), l = document.createElement("p");
+    l.className = "scoreline"; l.innerHTML = "Score: <b></b> · Streak: <b></b>";
+    const bs = l.querySelectorAll("b"); bs[0].textContent = S.score; bs[1].textContent = S.streak;
+    box.append(p, l); return box;
+  }
   const after = [{ label: "Next word", fn: newRound }, { label: "Main menu", fn: () => show("menu") }];
   function check() {
     const g = S.used.map(i => S.pool[i]).join("");
@@ -1112,7 +1256,7 @@ KEYS.hangman = e => { if (/^[a-z]$/i.test(e.key)) hangKey(e.key.toLowerCase()); 
       [...$("an-answer").children].forEach((t, i) => { t.classList.add("correct", "win"); t.style.setProperty("--i", i); });
       $("an-score").textContent = "Score " + S.score; $("an-streak").textContent = "Streak " + S.streak;
       FX.win();
-      setTimeout(() => openSheet("Solved", msg("You spelled ", g, g === S.word ? "." : ". Valid alternative word!"), after), 900);
+      setTimeout(() => openSheet("Solved", withScore(msg("You spelled ", g, g === S.word ? "." : ". Valid alternative word!")), after), 900);
     } else {
       S.streak = 0; FX.bad(); notify("Not a match", "Those letters don’t spell a valid word.", "bad");
       const el = $("an-answer"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
@@ -1132,7 +1276,7 @@ KEYS.hangman = e => { if (/^[a-z]$/i.test(e.key)) hangKey(e.key.toLowerCase()); 
   $("an-skip").onclick = () => {
     if (S.over) return;
     S.over = true; S.streak = 0; render();
-    openSheet("Skipped", msg("The word was ", S.word, "."), after);
+    openSheet("Skipped", withScore(msg("The word was ", S.word, ".")), after);
   };
   $("an-menu").onclick = () => { show("menu"); $("m-anagram").focus(); };
   $("m-anagram").onclick = () => { if (S.over) newRound(); show("anagram"); };
@@ -1279,30 +1423,9 @@ $("open-about").onclick = () => { show("about"); $("about-back").focus(); };
 $("about-back").onclick = () => { show("menu"); $("open-about").focus(); };
 $("open-settings").onclick = () => { show("settings"); $("settings-back").focus(); };
 $("settings-back").onclick = () => { show("menu"); $("open-settings").focus(); };
-$("how").onclick = () => {
-  const box = document.createElement("div"); box.className = "legend";
-  const mk = (cls, ch, text) => {
-    const d = document.createElement("div"), t = document.createElement("div"), s = document.createElement("span");
-    t.className = "tile " + cls; t.textContent = ch; s.textContent = text; d.append(t, s); return d;
-  };
-  const p = t => { const e = document.createElement("p"); e.style.textAlign = "left"; e.textContent = t; return e; };
-  const h = t => { const e = document.createElement("h3"); e.textContent = t; return e; };
-  box.append(
-    h("Wordle"),
-    p("Guess the word in six tries. Slide to pick 5 to 16 letters before starting. Every guess must be a real word from the dictionary."),
-    mk("correct", "A", "Right letter, right spot."),
-    mk("present", "B", "The letter is in the word, but in a different spot."),
-    mk("absent", "C", "The letter isn’t in the word."),
-    p("Hard mode (switch it on at the Wordle screen before you start): every hint uncovered must be used in your next guess."),
-    h("Hangman"),
-    p("Slide to pick 5 to 16 letters, then choose letters or type on your keyboard to uncover the hidden word. Six misses end the game."),
-    h("Anagram"),
-    p("Tap or type the letters in order to spell a valid word. Hints cost points."),
-    h("Word Search"),
-    p("Choose how many words (3 to 15) are hidden; the grid gets bigger as the count grows. Drag across the letters or tap the first and last letter.")
-  );
-  openSheet("How to play", box, [{ label: "Got it" }]);
-};
+$("how").onclick = () => { show("howto"); $("howto-back").focus(); };
+$("howto-back").onclick = () => { show("menu"); $("how").focus(); };
+KEYS.howto = e => { if (e.key === "Escape") { show("menu"); $("how").focus(); } };
 
 /* Unified physical keyboard router */
 document.addEventListener("keydown", e => {
