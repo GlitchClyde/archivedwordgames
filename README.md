@@ -1,5 +1,16 @@
 # Clyde's Archive Word Game: Update Notes
 
+## Update 3: game logos, How to play page, bold scores, photo and links
+
+Replace `index.html` and add the new `clyde.jpg` (your photo, resized to 400 px) to the game folder. `words.js` and `background.png` are unchanged.
+
+- **Game logos:** Wordle, Hangman, Anagram and Word Search each have their own logo (inline SVG, no extra files). They appear on the title page, the menu buttons, the game setup headers, the Menu button inside each game and the How to play page.
+- **How to play page:** it is now its own page instead of one popup. Wordle has a full-width card split into 3 columns (Goal, Colours, Hard mode). Hangman, Anagram and Word Search sit below it as 3 side-by-side cards with numbered steps. On phones the columns stack. Esc or Back returns to the menu.
+- **Bold scores:** score, streak, guesses-left, misses-left and found-word counters are now bold, larger pills. The Anagram popups show **Score** and **Streak** in bold, and the end-of-game stats line has bold numbers.
+- **About page:** your photo is added. Contact now has white email, LinkedIn and GitHub links plus buttons, and a new **Source code** card links to https://github.com/GlitchClyde/clydesarchive. All links use white text.
+
+---
+
 ## Update 2: title page, About page, animation and fixes
 
 Replace `index.html` only. `words.js` and `background.png` are unchanged from update 1.
