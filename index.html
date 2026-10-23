@@ -3,14 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Archive Word Games: Wordle and Hangman</title>
-<meta name="description" content="Play Wordle (5 to 8 letters) and Hangman in your browser. No sign-up, works offline, saves your settings on this device.">
+<title>Archive Word Games!</title>
+<meta name="description" content="Archive Word Games! Play Wordle, Hangman, Anagram and Word Search in your browser.">
 <meta name="theme-color" content="#0b1f3d">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232a6df4'/%3E%3Ctext x='32' y='45' font-size='38' font-weight='800' text-anchor='middle' fill='white' font-family='sans-serif'%3EA%3C/text%3E%3C/svg%3E">
-<script src="words.js"></script>
+
 <style>
   :root {
-    /* Palette hues. JS retunes --h (main color) and --ch (correct-letter color) to the background. */
     --h: 218; --ch: 155; --s: 70%;
     --blue: hsl(var(--h) var(--s) 52%);
     --blue-deep: hsl(var(--h) var(--s) 30%);
@@ -20,61 +19,109 @@
     --green-edge: hsl(var(--ch) 80% 70%);
     --absent: hsl(var(--h) 60% 6% / .64);
     --focus: hsl(var(--h) 100% 84%);
-    --tint: .4;
-    --bg: url("background.png");
+    --tint: .36;
+    --bg-overlay: linear-gradient(hsl(var(--h) 70% 8% / .18), hsl(var(--h) 70% 8% / .42));
     --tile: 54px;
     --ease: cubic-bezier(.22,.8,.24,1);
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html { min-height: 100%; }
+  html { min-height: 100%; -webkit-text-size-adjust: 100%; }
   body {
     min-height: 100vh; min-height: 100dvh;
     font-family: var(--font); color: #fff; background: hsl(var(--h) 60% 12%);
     display: flex; align-items: center; justify-content: center;
     padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
     user-select: none; -webkit-user-select: none;
+    overflow-x: hidden;
   }
   #bg {
     position: fixed; inset: 0; z-index: -1;
-    background: linear-gradient(hsl(var(--h) 70% 8% / .18), hsl(var(--h) 70% 8% / .4)), var(--bg) center / cover no-repeat, hsl(var(--h) 60% 12%);
+    background-image: var(--bg-overlay), url("background.png");
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-color: hsl(var(--h) 60% 12%);
+    transition: background 0.4s ease;
   }
-  html { -webkit-text-size-adjust: 100%; }
   button { font-family: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  /* Color-blind friendly palette: orange = correct, blue = present */
+  button:disabled { cursor: default; opacity: .55; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
   html[data-cb] { --green: hsl(28 96% 52%); --green-deep: hsl(22 90% 33%); --green-edge: hsl(34 100% 74%); --blue: hsl(212 85% 54%); --blue-deep: hsl(214 80% 30%); --blue-edge: hsl(208 100% 78%); }
   html[data-cb] .tile.correct::after, html[data-cb] .key.correct::after { content: "●"; position: absolute; top: 3px; right: 5px; font-size: .38em; line-height: 1; }
   .tile, .key { position: relative; }
-  button:disabled { cursor: default; }
-  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-  /* ---------- Liquid glass ---------- */
+  /* Liquid glass */
   .glass {
     position: relative; isolation: isolate;
     background:
-      linear-gradient(160deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,.05) 36%, rgba(255,255,255,.02) 64%, rgba(255,255,255,.17) 100%),
+      linear-gradient(160deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,.05) 36%, rgba(255,255,255,.02) 64%, rgba(255,255,255,.16) 100%),
       hsl(var(--h) 65% 15% / var(--tint));
     -webkit-backdrop-filter: blur(22px) saturate(190%) brightness(1.06);
     backdrop-filter: blur(22px) saturate(190%) brightness(1.06);
     border: 1px solid rgba(255,255,255,.22);
     box-shadow:
-      inset 0 1.5px 1px rgba(255,255,255,.8),
+      inset 0 1.5px 1px rgba(255,255,255,.7),
       inset 0 -1.5px 1px rgba(255,255,255,.3),
-      inset 0 0 26px rgba(255,255,255,.1),
+      inset 0 0 24px rgba(255,255,255,.08),
       0 22px 55px hsl(var(--h) 80% 5% / .5);
-    text-shadow: 0 1px 6px rgba(0,0,0,.55);
+    text-shadow: 0 1px 5px rgba(0,0,0,.55);
   }
   .glass::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
-    background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,255,255,0) 28%, rgba(255,255,255,0) 68%, rgba(255,255,255,.7));
+    background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,255,255,0) 28%, rgba(255,255,255,0) 68%, rgba(255,255,255,.65));
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
   }
   .screen { display: none; width: 94%; max-width: 440px; flex-direction: column; align-items: center; margin: .8rem 0; }
   .screen.active { display: flex; animation: screenIn .45s var(--ease) both; }
+  #game { max-width: var(--gmax, 440px); }
+  /* Title page */
+  .title-panel { padding: 2.4rem 1.6rem 2rem; gap: 1.6rem; }
+  h1.hero { font-size: clamp(2.3rem, 11vw, 3.2rem); line-height: 1.05; animation: heroFloat 5s ease-in-out infinite; text-shadow: 0 2px 18px rgba(0,0,0,.5), 0 0 28px hsl(var(--h) 100% 80% / .55); }
+  @keyframes heroFloat { 50% { transform: translateY(-6px); } }
+  #play { font-size: 1.3rem; padding: 1rem; animation: playPulse 2.6s ease-in-out infinite; }
+  @keyframes playPulse { 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 34px hsl(var(--h) 90% 60% / .85); } }
+  /* Game descriptions only appear on hover / keyboard focus (devices without hover always show them) */
+  @media (hover: hover) and (pointer: fine) {
+    .menu-buttons .btn.game small { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .3s var(--ease), opacity .25s ease; }
+    .menu-buttons .btn.game:hover small, .menu-buttons .btn.game:focus-visible small { max-height: 3.2em; opacity: .92; }
+  }
+  /* About page */
+  a.btn { display: block; text-align: center; text-decoration: none; }
+  .about-text { line-height: 1.5; font-size: .95rem; user-select: text; -webkit-user-select: text; }
+  .contact-line { font-size: .92rem; user-select: text; -webkit-user-select: text; word-break: break-word; }
+  /* Animated background: rising bubbles and drifting glows */
+  #fx { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  #fx.paused * { animation-play-state: paused !important; }
+  .bubble { position: absolute; bottom: -14vmin; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; opacity: 0;
+    background: radial-gradient(circle at 30% 26%, rgba(255,255,255,.8), rgba(255,255,255,.2) 36%, rgba(255,255,255,.05) 62%, rgba(255,255,255,.25) 100%);
+    border: 1px solid rgba(255,255,255,.5); box-shadow: inset 0 0 10px rgba(255,255,255,.3), 0 0 16px hsl(var(--h) 90% 75% / .3);
+    animation: bubbleRise var(--d) linear var(--delay) infinite; will-change: transform, opacity; }
+  @keyframes bubbleRise {
+    0% { transform: translate3d(0, 0, 0) scale(.7); opacity: 0; }
+    8% { opacity: var(--o); }
+    35% { transform: translate3d(var(--sway), -45vh, 0) scale(1); }
+    70% { transform: translate3d(calc(var(--sway) * -.8), -92vh, 0) scale(1.04); }
+    92% { opacity: var(--o); }
+    100% { transform: translate3d(var(--sway), -128vh, 0) scale(1.08); opacity: 0; }
+  }
+  .orb { position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%; filter: blur(40px); opacity: .5; background: radial-gradient(circle, hsl(var(--h) 100% 78% / .38), transparent 68%); animation: orbDrift 26s ease-in-out infinite alternate; }
+  .orb.a { left: -18vmax; top: -12vmax; }
+  .orb.b { right: -20vmax; bottom: -16vmax; animation-duration: 34s; animation-delay: -9s; }
+  .orb.c { left: 30vw; top: 38vh; width: 30vmax; height: 30vmax; opacity: .3; animation-duration: 40s; animation-delay: -18s; }
+  @keyframes orbDrift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(9vw, 7vh, 0) scale(1.18); } }
+  @media (prefers-reduced-motion: reduce) { #fx { display: none; } h1.hero, #play { animation: none; } }
+  #wordsearch { max-width: var(--wsmax, 440px); }
+  @media (max-width: 480px) { #game .panel, #wordsearch .panel { padding: 1rem .7rem; } }
   .panel { width: 100%; border-radius: 34px; padding: 1.4rem; display: flex; flex-direction: column; align-items: center; gap: .9rem; }
   @keyframes screenIn { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+
+  .fab { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; z-index: 20; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
+  .fab svg { opacity: 1; transition: opacity .25s; }
+  .fab.off svg { opacity: .5; }
+  .fab.off::after { content: ""; position: absolute; width: 26px; height: 2px; background: #fff; border-radius: 2px; transform: rotate(-45deg); box-shadow: 0 1px 3px rgba(0,0,0,.6); }
 
   .btn {
     border-radius: 999px; padding: .7rem 1.4rem; font-size: 1rem; font-weight: 600;
@@ -87,21 +134,18 @@
   .btn:hover:not(:disabled) { background: linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.16)); transform: translateY(-1px); }
   .btn:active:not(:disabled) { transform: scale(.97); }
   .btn.primary { background: linear-gradient(180deg, hsl(var(--h) 100% 70%), var(--blue-deep)); border-color: var(--blue-edge); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 22px hsl(var(--h) 80% 50% / .45); }
-  .btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, hsl(var(--h) 100% 76%), hsl(var(--h) var(--s) 36%)); }
   .btn.danger { border-color: rgba(255,140,140,.6); background: linear-gradient(180deg, rgba(255,120,120,.4), rgba(160,30,50,.35)); }
   .btn.wide { width: 100%; padding: .9rem 1.4rem; font-size: 1.1rem; }
   .btn.small { padding: .38rem .9rem; font-size: .85rem; }
-  .btn:disabled { opacity: .55; }
   .btn.ghost { background: none; box-shadow: none; border-color: rgba(255,255,255,.3); }
-  .statline { font-size: .9rem; opacity: .92; font-variant-numeric: tabular-nums; }
-  .btn[hidden] { display: none; }
-  .pill { border-radius: 999px; padding: .38rem .85rem; font-size: .82rem; font-weight: 600; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.28); }
+  .btn.game { display: flex; flex-direction: column; align-items: center; gap: .1rem; border-radius: 22px; padding: .7rem 1.2rem; font-size: 1.1rem; }
+  .btn.game small { font-size: .78rem; font-weight: 500; opacity: .92; }
+  .pill { border-radius: 999px; padding: .38rem .85rem; font-size: .82rem; font-weight: 600; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28); }
 
-  /* ---------- Menu, lobby, settings ---------- */
   h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -.02em; text-align: center; line-height: 1.1; }
   p.sub { text-align: center; opacity: .92; line-height: 1.4; max-width: 18rem; }
   .menu-buttons { width: 100%; display: flex; flex-direction: column; gap: .7rem; }
-  .btn-pair { display: flex; gap: .6rem; }
+  .btn-pair { display: flex; gap: .6rem; width: 100%; }
   .btn-pair .btn { flex: 1; padding: .6rem .5rem; font-size: .92rem; }
   .head { width: 100%; display: flex; align-items: center; justify-content: space-between; }
   .head h2 { font-size: 1.35rem; font-weight: 800; }
@@ -115,20 +159,23 @@
   .toggle[aria-checked="true"] .switch { background: var(--blue); }
   .toggle[aria-checked="true"] .switch::after { transform: translateX(20px); }
   .slider-line { display: flex; align-items: center; gap: .8rem; }
-  .slider-line output { min-width: 2.6rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-  input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 28px; background: transparent; cursor: pointer; }
-  input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(255,255,255,.12), hsl(var(--h) 90% 75% / .65)); border: 1px solid rgba(255,255,255,.35); }
-  input[type=range]::-moz-range-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(255,255,255,.12), hsl(var(--h) 90% 75% / .65)); border: 1px solid rgba(255,255,255,.35); }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -10px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
-  input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
-  .seg { display: flex; gap: .5rem; }
+  .slider-line output { min-width: 5.2rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Sliders: styled for WebKit/Blink AND Firefox so they are always visible (--p = filled share, set from JS) */
+  input[type=range] { -webkit-appearance: none; -moz-appearance: none; appearance: none; flex: 1 1 auto; width: 100%; min-width: 0; height: 32px; margin: 0; padding: 0; background: transparent; cursor: pointer; --p: 50%; }
+  input[type=range]::-webkit-slider-runnable-track { height: 12px; border-radius: 999px; background: linear-gradient(90deg, hsl(var(--h) 100% 72%) 0, hsl(var(--h) 100% 72%) var(--p), rgba(255,255,255,.30) var(--p), rgba(255,255,255,.30) 100%); box-shadow: 0 0 0 2px rgba(255,255,255,.85), inset 0 1px 3px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.35); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; box-sizing: border-box; width: 28px; height: 28px; margin-top: -8px; border-radius: 50%; background: #fff; border: 4px solid var(--blue); box-shadow: 0 2px 8px rgba(0,0,0,.55); }
+  input[type=range]::-moz-range-track { height: 12px; border: 0; border-radius: 999px; background: rgba(255,255,255,.30); box-shadow: 0 0 0 2px rgba(255,255,255,.85), inset 0 1px 3px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.35); }
+  input[type=range]::-moz-range-progress { height: 12px; border-radius: 999px; background: hsl(var(--h) 100% 72%); }
+  input[type=range]::-moz-range-thumb { box-sizing: border-box; width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 4px solid var(--blue); box-shadow: 0 2px 8px rgba(0,0,0,.55); }
+  input[type=range]:focus-visible { outline-offset: 4px; }
+  .seg { display: flex; gap: .5rem; width: 100%; }
   .seg button { flex: 1; padding: .7rem 0; border-radius: 16px; font-size: 1.1rem; font-weight: 700; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3); transition: background .25s, transform .18s var(--ease), border-color .25s; }
   .seg button[aria-checked="true"] { background: linear-gradient(180deg, hsl(var(--h) 100% 70%), var(--blue-deep)); border-color: var(--blue-edge); transform: translateY(-2px); }
 
-  /* ---------- Wordle board ---------- */
+  /* Wordle board */
   .stats { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: .4rem; }
-  .board { display: grid; gap: 7px; margin: .2rem 0; }
-  .row { display: grid; grid-template-columns: repeat(var(--cols, 5), var(--tile)); gap: 7px; }
+  .board { display: grid; gap: var(--gap, 7px); margin: .2rem 0; }
+  .row { display: grid; grid-template-columns: repeat(var(--cols, 5), var(--tile)); gap: var(--gap, 7px); }
   .row.shake { animation: shake .5s var(--ease); }
   .tile {
     width: var(--tile); height: var(--tile); border-radius: calc(var(--tile) * .24);
@@ -145,9 +192,11 @@
   .tile.absent, .key.absent { background: var(--absent); border-color: rgba(255,255,255,.12); color: rgba(255,255,255,.66); }
   .tile.correct { box-shadow: 0 5px 18px hsl(var(--ch) 70% 45% / .5), inset 0 1px 0 rgba(255,255,255,.5); }
   .tile.present { box-shadow: 0 5px 18px hsl(var(--h) 80% 55% / .55), inset 0 1px 0 rgba(255,255,255,.4); }
+  .tile.win { animation: bounce .6s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
   @keyframes pop { 50% { transform: scale(1.09); } }
   @keyframes flip { 0% { transform: perspective(400px) rotateX(0); } 50% { transform: perspective(400px) rotateX(90deg); } 100% { transform: perspective(400px) rotateX(0); } }
   @keyframes shake { 15%,55% { transform: translateX(-7px); } 35%,75% { transform: translateX(7px); } 100% { transform: none; } }
+  @keyframes bounce { 40% { transform: translateY(-14px); } 70% { transform: translateY(3px); } }
 
   .keyboard { width: 100%; display: flex; flex-direction: column; gap: 6px; }
   .krow { display: flex; justify-content: center; gap: 5px; }
@@ -161,18 +210,39 @@
   .key.wide { flex: 1.6; font-size: .75rem; }
   .key.absent { opacity: .75; }
 
-  /* ---------- Hangman ---------- */
+  /* Hangman */
   .gallows { width: 150px; height: 160px; stroke: rgba(255,255,255,.92); stroke-width: 4; stroke-linecap: round; fill: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
   .gallows .frame { stroke: rgba(255,255,255,.55); }
   .gallows .part { opacity: 0; transform-origin: center; transform: scale(.85); transition: opacity .35s ease, transform .35s var(--ease); }
   .gallows .part.on { opacity: 1; transform: none; }
-  .hword { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; min-height: 48px; }
-  .slot { width: var(--slot, 30px); height: calc(var(--slot, 30px) * 1.3); display: flex; align-items: center; justify-content: center; font-size: calc(var(--slot, 30px) * .78); font-weight: 800; text-transform: uppercase; border-bottom: 3px solid rgba(255,255,255,.7); transition: color .3s; }
+  .hword {
+    display: flex; flex-wrap: nowrap !important; justify-content: center; align-items: center;
+    gap: 4px; min-height: 48px; width: 100%; max-width: 100%; overflow: hidden;
+  }
+  .slot {
+    flex: 0 1 var(--slot, 26px); width: var(--slot, 26px); height: calc(var(--slot, 26px) * 1.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--slot, 26px) * .78); font-weight: 800; text-transform: uppercase;
+    border-bottom: 3px solid rgba(255,255,255,.8); transition: color .3s;
+  }
   .slot.miss { color: hsl(0 90% 75%); }
   .hkeys { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; width: 100%; }
   .hkeys .key { flex: 0 0 calc((100% - 5px * 6) / 7); height: 42px; }
 
-  /* ---------- Notification banner ---------- */
+  /* Anagram & Word Search */
+  .tile.an { --tile: var(--an-tile, 48px); cursor: pointer; }
+  .tile.an:disabled { opacity: .25; cursor: default; }
+  div.tile.an { cursor: default; }
+  .an-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; min-height: var(--an-tile, 48px); }
+  .an-row.shake { animation: shake .5s var(--ease); }
+  .ws-grid { display: grid; grid-template-columns: repeat(8, var(--cell)); gap: 4px; touch-action: none; --cell: clamp(30px, 8.8vw, 42px); } /* columns/cell size are set from JS for the chosen grid size */
+  .ws-cell { width: var(--cell); height: var(--cell); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: calc(var(--cell) * .5); text-transform: uppercase; background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.28); transition: background .2s, border-color .2s; }
+  .ws-cell.sel { background: linear-gradient(180deg, hsl(var(--h) 100% 70%), var(--blue-deep)); border-color: var(--blue-edge); }
+  .ws-cell.found { background: linear-gradient(135deg, var(--green), var(--green-deep)); border-color: var(--green-edge); }
+  .ws-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .pill.done { text-decoration: line-through; opacity: .6; }
+
+  /* Notification banner */
   .notice {
     position: fixed; top: calc(env(safe-area-inset-top) + 12px); left: 50%; z-index: 30;
     transform: translate(-50%, -170%); opacity: 0; transition: transform .55s var(--ease), opacity .3s ease;
@@ -184,13 +254,19 @@
   .notice.good { border-color: var(--green-edge); }
   .notice.bad  { border-color: rgba(255,120,120,.85); }
 
-  /* ---------- Sheet ---------- */
+  /* End sheet & bold revelation */
   .backdrop { position: fixed; inset: 0; background: hsl(var(--h) 80% 5% / .55); display: none; align-items: center; justify-content: center; z-index: 40; padding: 1rem; }
   .backdrop.open { display: flex; animation: fade .3s ease both; }
   .sheet { width: 100%; max-width: 360px; max-height: 92vh; overflow-y: auto; border-radius: 30px; padding: 1.6rem; text-align: center; display: flex; flex-direction: column; gap: .8rem; animation: rise .5s var(--ease) both; }
   .sheet h2 { font-size: 1.6rem; font-weight: 800; }
   .sheet p { line-height: 1.45; }
-  .sheet strong { font-weight: 800; letter-spacing: .08em; font-size: 1.12em; }
+  .sheet strong {
+    font-weight: 900 !important; letter-spacing: .08em; font-size: 1.45em;
+    color: #fff; text-shadow: 0 0 18px rgba(255,255,255,.75);
+    display: inline-block; padding: 0.25rem 0.8rem; margin: 0.35rem 0;
+    border-radius: 14px; background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.35);
+  }
   .sheet .actions { display: flex; flex-direction: column; gap: .6rem; margin-top: .4rem; }
   .legend { display: flex; flex-direction: column; gap: .6rem; text-align: left; }
   .legend h3 { font-size: 1rem; margin-top: .3rem; }
@@ -200,24 +276,38 @@
   @keyframes fade { from { opacity: 0; } }
 
   @media (max-height: 720px) { .key { height: 42px; } .gallows { width: 120px; height: 128px; } }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 <div id="bg"></div>
+<div id="fx" aria-hidden="true"><span class="orb a"></span><span class="orb b"></span><span class="orb c"></span></div>
 
-<main class="screen active" id="menu">
+<button class="fab glass" id="music-fab" aria-label="Toggle music" aria-pressed="false">
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 17V5l10-2v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="17" r="3" fill="currentColor"/><circle cx="17" cy="15" r="3" fill="currentColor"/></svg>
+</button>
+
+<main class="screen active" id="title">
+  <div class="panel glass title-panel">
+    <h1 class="hero">Archive Word Games!</h1>
+    <button class="btn primary wide" id="play">Play</button>
+  </div>
+</main>
+
+<main class="screen" id="menu">
   <div class="panel glass">
-    <h1>Archive Word Games</h1>
-    <p class="sub">Two classic word games. Pick one to start.</p>
+    <h1>Archive Word Games!</h1>
+    <p class="sub">Pick a game to start.</p>
     <div class="menu-buttons">
-      <button class="btn primary wide" id="m-wordle">Wordle</button>
-      <button class="btn primary wide" id="m-hangman">Hangman</button>
-      <button class="btn wide ghost" disabled>More games coming soon</button>
+      <button class="btn primary wide game" id="m-wordle"><b>Wordle</b><small>Guess the word in six tries. 5 to 16 letters.</small></button>
+      <button class="btn primary wide game" id="m-hangman"><b>Hangman</b><small>Uncover the word before six misses. You pick the length.</small></button>
+      <button class="btn primary wide game" id="m-anagram"><b>Anagram</b><small>Unscramble the letters into a word.</small></button>
+      <button class="btn primary wide game" id="m-wordsearch"><b>Word Search</b><small>Find the hidden words. You pick how many.</small></button>
       <div class="btn-pair">
         <button class="btn" id="how">How to play</button>
         <button class="btn" id="open-settings">Settings</button>
+        <button class="btn" id="open-about">About</button>
       </div>
+      <button class="btn small ghost" id="home">Back to title</button>
     </div>
   </div>
 </main>
@@ -227,11 +317,72 @@
     <div class="head"><button class="btn small" id="lobby-back">Back</button><h2>Wordle</h2><span class="spacer"></span></div>
     <div class="row-card">
       <div><b>Word length</b><small>How many letters are in the hidden word?</small></div>
-      <div class="seg" id="len-seg" role="radiogroup" aria-label="Word length"></div>
+      <div class="slider-line">
+        <input type="range" id="len" aria-label="Word length">
+        <output id="len-out" for="len"></output>
+      </div>
     </div>
-    <p class="sub" id="lobby-hard"></p>
+    <div class="row-card">
+      <button class="toggle" id="hard" role="switch" aria-checked="false">
+        <span><b>Hard mode</b><small>Revealed hints must be used in your later guesses.</small></span>
+        <span class="switch"></span>
+      </button>
+    </div>
     <button class="btn primary wide" id="start">Start game</button>
     <button class="btn wide" id="resume" hidden>Resume game</button>
+  </div>
+</section>
+
+<section class="screen" id="hlobby">
+  <div class="panel glass">
+    <div class="head"><button class="btn small" id="hlobby-back">Back</button><h2>Hangman</h2><span class="spacer"></span></div>
+    <div class="row-card">
+      <div><b>Word length</b><small>How many letters are in the hidden word?</small></div>
+      <div class="slider-line">
+        <input type="range" id="hlen" aria-label="Hangman word length">
+        <output id="hlen-out" for="hlen"></output>
+      </div>
+    </div>
+    <button class="btn primary wide" id="h-start">Start game</button>
+    <button class="btn wide" id="h-resume" hidden>Resume game</button>
+  </div>
+</section>
+
+<section class="screen" id="wslobby">
+  <div class="panel glass">
+    <div class="head"><button class="btn small" id="wslobby-back">Back</button><h2>Word Search</h2><span class="spacer"></span></div>
+    <div class="row-card">
+      <div><b>Number of words</b><small>How many words are hidden in the grid? The grid grows with the count.</small></div>
+      <div class="slider-line">
+        <input type="range" id="wsn" aria-label="Number of hidden words">
+        <output id="wsn-out" for="wsn"></output>
+      </div>
+      <small id="wsn-hint" style="margin:0"></small>
+    </div>
+    <button class="btn primary wide" id="ws-start">Start game</button>
+    <button class="btn wide" id="ws-resume" hidden>Resume game</button>
+  </div>
+</section>
+
+<section class="screen" id="about">
+  <div class="panel glass">
+    <div class="head"><button class="btn small" id="about-back">Back</button><h2>About</h2><span class="spacer"></span></div>
+    <div class="row-card">
+      <b>About this game</b>
+      <p class="about-text"><b>Archive Word Games!</b> is the passion project of <b>Clyde Justine Nate</b>. It is an ongoing project: more word games are being added over time, and some are still in development.</p>
+    </div>
+    <div class="row-card">
+      <b>About the creator</b>
+      <p class="about-text">BS Computer Science graduate (Cum Laude), IT Instructor at STI College Naga, and a Master of Science in Information Systems student at UP Open University.</p>
+    </div>
+    <div class="row-card">
+      <b>Contact</b>
+      <p class="contact-line">Naga City, Camarines Sur, Philippines<br>clydeernate@gmail.com<br>linkedin.com/in/clydejustinenate</p>
+      <div class="btn-pair">
+        <a class="btn" href="mailto:clydeernate@gmail.com">Email</a>
+        <a class="btn" href="https://linkedin.com/in/clydejustinenate" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -239,26 +390,41 @@
   <div class="panel glass">
     <div class="head"><button class="btn small" id="settings-back">Back</button><h2>Settings</h2><span class="spacer"></span></div>
     <div class="row-card">
-      <button class="toggle" id="hard" role="switch" aria-checked="false">
-        <span><b>Hard mode</b><small>Wordle only. Revealed hints must be used in every later guess. Applies to your next new game.</small></span>
-        <span class="switch"></span>
-      </button>
-    </div>
-    <div class="row-card">
       <button class="toggle" id="cb" role="switch" aria-checked="false">
-        <span><b>Color-blind colors</b><small>Uses orange and blue, and marks correct letters with a dot.</small></span>
+        <span><b>Color-blind colors</b><small>Uses high-contrast orange and blue.</small></span>
         <span class="switch"></span>
       </button>
     </div>
     <div class="row-card">
-      <div><b>Glass transparency</b><small>Slide to see more of the background through the glass.</small></div>
+      <button class="toggle" id="snd" role="switch" aria-checked="true">
+        <span><b>Sound effects</b><small>Key taps, tile flips, and win/lose tones.</small></span>
+        <span class="switch"></span>
+      </button>
+      <button class="toggle" id="hap" role="switch" aria-checked="true">
+        <span><b>Haptics</b><small>Short vibrations on taps, errors and wins.</small></span>
+        <span class="switch"></span>
+      </button>
+      <button class="toggle" id="mus" role="switch" aria-checked="true">
+        <span><b>Background music</b><small>Ambient soundtrack loop. On by default; it starts after your first tap or key press.</small></span>
+        <span class="switch"></span>
+      </button>
+    </div>
+    <div class="row-card">
+      <div><b>Music volume</b><small>Sound effects stay unchanged.</small></div>
+      <div class="slider-line">
+        <input type="range" id="vol" min="0" max="100" step="1" aria-label="Music volume">
+        <output id="vol-out" for="vol"></output>
+      </div>
+    </div>
+    <div class="row-card">
+      <div><b>Glass transparency</b><small>Slide to see more background through the glass.</small></div>
       <div class="slider-line">
         <input type="range" id="clear" min="0" max="100" step="1" aria-label="Glass transparency">
         <output id="clear-out" for="clear"></output>
       </div>
     </div>
     <div class="row-card">
-      <div><b>Background</b><small>Upload your own picture. The game colors will adjust to match it, and it stays on this device.</small></div>
+      <div><b>Background image</b><small>Upload your own picture. Colors adapt automatically.</small></div>
       <div class="btn-pair">
         <button class="btn" id="upload">Upload image</button>
         <button class="btn" id="default-bg">Use default</button>
@@ -303,6 +469,26 @@
   </div>
 </section>
 
+<section class="screen" id="anagram">
+  <div class="panel glass">
+    <div class="stats"><button class="btn small" id="an-menu">Menu</button><span class="pill" id="an-score">Score 0</span><span class="pill" id="an-streak">Streak 0</span></div>
+    <p class="sub" id="an-info"></p>
+    <div class="an-row" id="an-answer" aria-label="Your answer"></div>
+    <div class="an-row" id="an-pool" role="group" aria-label="Scrambled letters"></div>
+    <div class="btn-pair" style="width:100%"><button class="btn" id="an-shuffle">Shuffle</button><button class="btn" id="an-hint">Hint</button><button class="btn" id="an-clear">Clear</button></div>
+    <button class="btn small ghost" id="an-skip">Skip word</button>
+  </div>
+</section>
+
+<section class="screen" id="wordsearch">
+  <div class="panel glass">
+    <div class="stats"><button class="btn small" id="ws-menu">Menu</button><span class="pill" id="ws-count"></span><button class="btn small" id="ws-new">New grid</button></div>
+    <div class="ws-list" id="ws-list"></div>
+    <div class="ws-grid" id="ws-grid" role="grid" aria-label="Word search grid"></div>
+    <p class="sub" style="font-size:.85rem;opacity:.85">Drag across letters, or tap the first and last letter.</p>
+  </div>
+</section>
+
 <div class="notice glass" id="notice" role="status" aria-live="polite"></div>
 <div class="backdrop" id="backdrop">
   <div class="sheet glass" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -310,21 +496,47 @@
   </div>
 </div>
 
+<!-- Word lists: every dictionary word from 5 to 16 letters (see README.md) -->
+<script src="words.js"></script>
+
 <script>
-/* ---------- Word lists (words.js): allowed[n] = valid guesses, answers[n] = secret words ---------- */
+/* ==========================================================
+   1. DICTIONARY SETUP & INLINE FALLBACK PROTECTION
+   ========================================================== */
 const D = window.WORD_DATA || {};
 const split = s => String(s || "").toLowerCase().split(/\s+/).filter(Boolean);
 const ALLOWED = {}, ANS = {};
 for (let n = 5; n <= 16; n++) {
   ALLOWED[n] = new Set(split(D.allowed && D.allowed[n]));
   ANS[n] = split(D.answers && D.answers[n]).filter(w => w.length === n);
-  ANS[n].forEach(w => ALLOWED[n].add(w));      // every answer is also a legal guess
+  ANS[n].forEach(w => ALLOWED[n].add(w));
 }
-const WORDS_OK = [5, 6, 7, 8].every(n => ANS[n].length && ALLOWED[n].size);
-const HANG_WORDS = [6, 7, 8, 9, 10, 11, 12].flatMap(n => ANS[n]);
 
+// Built-in emergency backup list in case of slow local disk file reads
+const INLINE_WORDS = {
+  5: ["about", "actor", "adapt", "admit", "adult", "after", "again", "agent", "agree", "ahead", "alarm", "album", "alert", "alive", "allow", "alone", "along", "alter", "among", "angel", "anger", "angle", "angry", "apple", "apply", "arena", "argue", "arise", "armor", "array", "aside", "asset", "audio", "avoid", "award", "aware", "basic", "beach", "beard", "beast", "begin", "black", "blade", "blame", "blank", "blast", "blaze", "blend", "bless", "blind", "block", "blood", "bloom", "board", "boast", "bonus", "boost", "booth", "bound", "brain", "brake", "brand", "brave", "bread", "break", "breed", "brick", "bride", "brief", "bring", "broad", "brown", "brush", "build", "burst", "cabin", "cable", "candy", "carry", "catch", "cause", "chain", "chair", "chalk", "charm", "chart", "chase", "cheap", "check", "cheek", "cheer", "chess", "chest", "chief", "child", "chill", "choir", "chord", "civil", "claim", "class", "clean", "clear", "clerk", "click", "cliff", "climb", "clock", "close", "cloth", "cloud", "coach", "coast", "color", "could", "count", "court", "cover", "crack", "craft", "crane", "crash", "crazy", "cream", "crime", "crisp", "cross", "crowd", "crown", "crush", "cycle", "daily", "dance", "death", "delay", "depth", "doubt", "dozen", "draft", "drain", "drama", "dream", "dress", "drift", "drink", "drive", "early", "earth", "eight", "elbow", "elect", "empty", "enemy", "enjoy", "enter", "equal", "error", "event", "exact", "exist", "extra", "faith", "false", "fault", "fence", "fever", "fiber", "field", "fifth", "fight", "final", "flame", "flash", "fleet", "flesh", "float", "flood", "floor", "flour", "fluid", "focus", "force", "forge", "forth", "forty", "frame", "fresh", "front", "frost", "fruit", "giant", "glass", "globe", "glory", "grace", "grade", "grain", "grand", "grant", "grape", "grass", "great", "green", "greet", "grief", "group", "guard", "guess", "guest", "guide", "habit", "happy", "harsh", "heart", "heavy", "honey", "honor", "horse", "hotel", "house", "human", "humor", "ideal", "image", "index", "inner", "input", "irony", "issue", "ivory", "jewel", "joint", "judge", "juice", "knife", "knock", "known", "label", "labor", "large", "laser", "later", "laugh", "layer", "learn", "least", "leave", "legal", "lemon", "level", "light", "limit", "local", "logic", "loose", "lucky", "lunch", "magic", "major", "maker", "match", "maybe", "mayor", "media", "mercy", "metal", "might", "minor", "model", "money", "month", "moral", "motor", "mount", "mouse", "mouth", "movie", "music", "naive", "nerve", "never", "night", "noble", "noise", "north", "novel", "nurse", "ocean", "offer", "often", "olive", "onion", "opera", "orbit", "order", "other", "outer", "owner", "paint", "panel", "paper", "party", "patch", "pause", "peace", "pearl", "phase", "phone", "photo", "piano", "piece", "pilot", "pitch", "pizza", "place", "plain", "plane", "plant", "plate", "plaza", "point", "polar", "porch", "pound", "power", "press", "price", "pride", "prime", "print", "prize", "proof", "proud", "pulse", "queen", "quick", "quiet", "quote", "radio", "raise", "range", "rapid", "ratio", "reach", "ready", "realm", "refer", "relax", "reply", "rider", "ridge", "right", "rival", "river", "robot", "rough", "round", "route", "royal", "rural", "salad", "scale", "scene", "scope", "score", "sense", "serve", "seven", "shade", "shake", "shall", "shape", "share", "sharp", "sheep", "sheet", "shelf", "shell", "shift", "shine", "shirt", "shore", "short", "shout", "sight", "since", "sixth", "skill", "sleep", "slice", "slide", "small", "smart", "smile", "smoke", "snake", "solid", "solve", "sound", "south", "space", "spare", "speak", "speed", "spend", "spice", "spike", "spine", "split", "spoon", "sport", "staff", "stage", "stair", "stake", "stamp", "stand", "stare", "start", "state", "steam", "steel", "steep", "stick", "still", "stock", "stone", "store", "storm", "story", "stove", "straw", "strip", "study", "stuff", "style", "sugar", "suite", "sunny", "super", "sweet", "swift", "swing", "sword", "table", "taste", "teach", "thank", "theme", "thick", "thing", "think", "third", "three", "throw", "thumb", "tiger", "tight", "timer", "title", "toast", "today", "tooth", "topic", "total", "touch", "tough", "tower", "trace", "track", "trade", "trail", "train", "treat", "trend", "trial", "tribe", "trick", "truck", "truly", "trust", "truth", "twice", "uncle", "under", "union", "unity", "until", "upper", "urban", "usage", "usual", "valid", "value", "video", "virus", "visit", "vital", "vivid", "voice", "waste", "watch", "water", "wheel", "where", "which", "while", "white", "whole", "whose", "width", "woman", "world", "worry", "worth", "would", "wound", "write", "wrong", "yield", "young", "youth", "zebra"],
+  6: ["action", "advice", "animal", "answer", "appeal", "appear", "arrive", "artist", "aspect", "attack", "author", "battle", "beauty", "become", "before", "belief", "belong", "border", "bottle", "branch", "breath", "bridge", "bright", "budget", "camera", "cancel", "candle", "carbon", "career", "castle", "casual", "caught", "center", "chance", "change", "charge", "choice", "choose", "church", "circle", "client", "closed", "coffee", "column", "combat", "common", "comply", "copper", "corner", "county", "couple", "course", "cousin", "credit", "crisis", "custom", "damage", "danger", "dealer", "debate", "decade", "decide", "defeat", "defend", "define", "degree", "demand", "depend", "deputy", "desert", "design", "desire", "detail", "detect", "device", "differ", "dinner", "direct", "doctor", "dollar", "domain", "double", "dragon", "drawer", "driver", "during", "easily", "eating", "editor", "effect", "effort", "eighth", "either", "eleven", "emerge", "empire", "employ", "enable", "ending", "energy", "engage", "engine", "enough", "ensure", "entire", "entity", "equity", "escape", "estate", "ethnic", "exceed", "except", "excess", "expand", "expect", "expert", "export", "extend", "extent", "fabric", "facial", "factor", "failed", "fairly", "fallen", "family", "famous", "father", "fellow", "female", "figure", "filing", "finger", "finish", "fiscal", "flight", "flower", "flying", "follow", "forced", "forest", "forget", "formal", "format", "former", "foster", "fought", "fourth", "freeze", "french", "friend", "future", "garden", "gather", "gender", "german", "global", "golden", "ground", "growth", "guilty", "handle", "happen", "hardly", "headed", "health", "height", "hidden", "holder", "honest", "impact", "import", "income", "indeed", "infant", "inform", "injury", "inside", "intend", "intent", "invest", "island", "itself", "jersey", "junior", "killed", "labour", "latest", "latter", "launch", "lawyer", "leader", "league", "leaves", "legacy", "length", "lesson", "letter", "lights", "likely", "linked", "liquid", "listen", "little", "living", "locate", "lonely", "losing", "luxury", "mainly", "making", "manage", "manner", "manual", "margin", "marine", "marked", "market", "master", "matter", "mature", "medium", "member", "memory", "mental", "merely", "merger", "method", "middle", "miller", "mining", "minute", "mirror", "mobile", "modern", "modify", "module", "moment", "mostly", "mother", "motion", "motor", "mount", "moving", "murder", "museum", "mutual", "myself", "narrow", "nation", "native", "nature", "nearly", "nights", "nobody", "normal", "notice", "notion", "number", "object", "obtain", "office", "offset", "online", "option", "orange", "origin", "output", "oxford", "packed", "palace", "parent", "partly", "patent", "people", "period", "permit", "person", "phrase", "picked", "planet", "player", "please", "plenty", "pocket", "police", "policy", "prefer", "pretty", "prince", "prison", "profit", "proper", "proven", "public", "pursue", "raised", "random", "rarely", "rather", "rating", "reader", "really", "reason", "recall", "recent", "record", "reduce", "reform", "regard", "regime", "region", "relate", "relief", "remain", "remote", "remove", "repair", "repeat", "replay", "report", "rescue", "resign", "result", "retail", "retain", "return", "reveal", "review", "reward", "riding", "rising", "robust", "ruling", "safety", "salary", "sample", "saving", "saying", "scheme", "school", "screen", "search", "season", "second", "secret", "sector", "secure", "seeing", "select", "seller", "senior", "series", "server", "settle", "severe", "should", "signal", "signed", "silent", "silver", "simple", "simply", "single", "sister", "slight", "smooth", "social", "solely", "sought", "source", "speech", "spirit", "spoken", "spread", "spring", "square", "stable", "status", "steady", "stolen", "strain", "stream", "street", "stress", "strict", "strike", "string", "strong", "struck", "studio", "submit", "subtle", "sudden", "suffer", "summer", "summit", "supply", "surely", "survey", "switch", "symbol", "system", "taking", "talent", "target", "taught", "tenant", "tender", "tennis", "thanks", "theory", "thirty", "though", "threat", "thrown", "ticket", "timely", "timing", "tissue", "toward", "travel", "treaty", "trying", "twelve", "twenty", "unable", "unique", "united", "unless", "unlike", "update", "useful", "valley", "varied", "vendor", "versus", "victim", "vision", "visual", "volume", "walker", "wealth", "weekly", "weight", "wholly", "window", "winner", "winter", "within", "wonder", "worker", "wright", "writer", "yellow"],
+  7: ["ability", "absence", "academy", "account", "accused", "achieve", "acquire", "address", "advance", "adverse", "advised", "adviser", "against", "airline", "airport", "alcohol", "alleged", "already", "analyst", "ancient", "another", "anxiety", "anxious", "anybody", "applied", "arrange", "arrival", "article", "assault", "assume", "attempt", "attract", "auction", "average", "backing", "balance", "banking", "barrier", "battery", "bearing", "beating", "because", "bedroom", "believe", "beneath", "benefit", "besides", "between", "billion", "binding", "brother", "brought", "cabinet", "caliber", "calling", "capable", "capital", "captain", "caption", "capture", "careful", "carrier", "caution", "ceiling", "central", "centric", "century", "certain", "chamber", "channel", "chapter", "charity", "charlie", "charter", "checked", "chicken", "chronic", "circuit", "citizen", "classic", "climate", "closing", "closure", "clothes", "collect", "college", "combine", "comfort", "command", "comment", "compact", "company", "compare", "compete", "complex", "concept", "concern", "concert", "conduct", "confirm", "connect", "consent", "consist", "contact", "contain", "content", "contest", "context", "control", "convert", "correct", "council", "counsel", "counter", "country", "crucial", "crystal", "culture", "current", "cutting", "dealing", "decided", "decline", "default", "defence", "deficit", "deliver", "density", "deposit", "desktop", "despite", "destroy", "develop", "diagram", "diamond", "digital", "discuss", "disease", "display", "dispute", "distant", "diverse", "divided", "drawing", "driving", "dynamic", "eastern", "economy", "edition", "elderly", "element", "engaged", "enhance", "episode", "equally", "essence", "evening", "evident", "exactly", "examine", "example", "excited", "exclude", "exhaust", "exhibit", "expense", "explain", "explore", "express", "extreme", "factory", "faculty", "failing", "failure", "fashion", "feature", "federal", "feeling", "fiction", "fifteen", "filling", "finance", "finding", "fishing", "fitness", "foreign", "forever", "formula", "fortune", "forward", "founder", "freedom", "further", "gallery", "gateway", "general", "genetic", "genuine", "gigabit", "greater", "hanging", "heading", "healthy", "hearing", "heavily", "helpful", "helping", "highway", "himself", "history", "holding", "holiday", "housing", "however", "hundred", "husband", "illegal", "illness", "imagine", "imaging", "impacts", "improve", "include", "initial", "inquiry", "insight", "install", "instant", "instead", "intense", "interim", "involve", "jointly", "journal", "journey", "justice", "justify", "keeping", "killing", "kingdom", "kitchen", "knowing", "landing", "largely", "lasting", "leading", "learned", "leisure", "liberal", "liberty", "library", "license", "limited", "listing", "logical", "loyalty", "machine", "manager", "married", "massive", "maximum", "meaning", "measure", "medical", "meeting", "mention", "message", "million", "mineral", "minimal", "minimum", "missing", "mission", "mistake", "mixture", "monitor", "monthly", "morning", "musical", "mystery", "natural", "neither", "nervous", "network", "neutral", "notable", "nothing", "nowhere", "nuclear", "nursing", "obvious", "offense", "officer", "ongoing", "opening", "operate", "opinion", "optical", "organic", "outcome", "outdoor", "outline", "outside", "overall", "pacific", "package", "painful", "painter", "parking", "partial", "partner", "passage", "passing", "passion", "passive", "patient", "pattern", "payable", "payment", "penalty", "pending", "pension", "percent", "perfect", "perform", "perhaps", "phoenix", "picking", "picture", "pioneer", "plastic", "pointed", "popular", "portion", "poverty", "precise", "predict", "premier", "premium", "prepare", "present", "prevent", "primary", "printer", "privacy", "private", "problem", "proceed", "process", "produce", "product", "profile", "program", "project", "promise", "promote", "protect", "protein", "protest", "provide", "publish", "purpose", "pursuit", "qualify", "quality", "quarter", "radical", "railway", "readily", "reading", "reality", "realize", "receipt", "receive", "recover", "reflect", "regular", "release", "remains", "removal", "removed", "replace", "request", "require", "reserve", "resolve", "respect", "respond", "restore", "revenue", "reverse", "routine", "running", "satisfy", "science", "section", "segment", "serious", "service", "serving", "session", "setting", "seventh", "several", "shortly", "showing", "silence", "similar", "sitting", "sixteen", "skilled", "smoking", "society", "somehow", "someone", "speaker", "special", "species", "sponsor", "station", "storage", "strange", "stretch", "student", "subject", "succeed", "success", "suggest", "summary", "support", "suppose", "supreme", "surface", "surgery", "surplus", "survive", "suspect", "sustain", "teacher", "telecom", "telling", "tension", "theatre", "therapy", "thereby", "thought", "through", "tonight", "totally", "towards", "traffic", "trouble", "turning", "typical", "uniform", "unknown", "unusual", "upgrade", "upscale", "utility", "variety", "various", "vehicle", "venture", "version", "veteran", "victory", "viewing", "village", "violent", "virtual", "visible", "waiting", "walking", "warning", "warrant", "wearing", "weather", "webcast", "website", "welcome", "western", "whereas", "whereby", "whether", "willing", "winning", "without", "witness", "working", "writing", "written"],
+  8: ["absolute", "abstract", "academic", "accepted", "accident", "accuracy", "accurate", "achieved", "acquired", "activity", "actually", "addition", "adequate", "adjacent", "adjusted", "advanced", "advisory", "advocate", "affected", "aircraft", "alliance", "allocate", "alluvial", "although", "aluminum", "analysis", "announce", "anything", "anywhere", "apparent", "appendix", "approach", "approval", "argument", "artistic", "assembly", "assuming", "athletic", "attached", "attitude", "attorney", "audience", "autonomy", "aviation", "bachelor", "bacteria", "baseball", "baseline", "basement", "becoming", "behavior", "believed", "belonged", "boundary", "building", "business", "calendar", "campaign", "capacity", "casualty", "category", "catholic", "cautious", "cellular", "ceremony", "chairman", "champion", "chemical", "circular", "citation", "civilian", "clearing", "clinical", "clothing", "cocktail", "collapse", "colonial", "colorful", "combined", "comeback", "commerce", "composed", "compound", "computer", "conclude", "concrete", "conflict", "congress", "consider", "constant", "consumer", "continue", "contract", "contrary", "contrast", "convince", "corridor", "coverage", "creation", "creative", "creature", "criminal", "critical", "crucially", "cultural", "currency", "customer", "database", "daughter", "daylight", "deadline", "deciding", "decision", "decrease", "deferred", "definite", "delicate", "delivery", "describe", "designer", "detailed", "diabetes", "dialogue", "diameter", "directly", "director", "disabled", "disaster", "disclose", "discount", "discover", "disorder", "dispatch", "disposal", "distinct", "district", "dividend", "division", "doctrine", "document", "domestic", "dominant", "donation", "downtown", "dramatic", "dressing", "duration", "dynamics", "earnings", "economic", "educated", "efficacy", "eighteen", "election", "electric", "electron", "elegance", "elements", "eligible", "emerging", "emission", "emphasis", "employed", "employee", "employer", "enabling", "engineer", "enormous", "entirely", "entrance", "envelope", "equality", "equation", "estimate", "evaluate", "everyday", "everyone", "evidence", "exchange", "exciting", "excluded", "exercise", "existing", "expanded", "expected", "expenses", "explicit", "exposure", "extended", "external", "facility", "familiar", "favorite", "featured", "feedback", "festival", "fighting", "finished", "firewall", "firmware", "flagship", "flexible", "floating", "football", "forecast", "foremost", "formerly", "fraction", "fragment", "frequent", "friendly", "frontier", "function", "generate", "generous", "genetics", "geometry", "goodwill", "governor", "graduate", "graphics", "grateful", "guardian", "guidance", "handling", "hardware", "headline", "heritage", "historic", "homeland", "homeless", "homepage", "hospital", "hostages", "humanity", "identify", "identity", "ideology", "ignorant", "illusion", "imagined", "imperial", "implicit", "incident", "included", "increase", "indicate", "indirect", "industry", "infinite", "informal", "informed", "inherent", "initiate", "innocent", "inspired", "instance", "integral", "intended", "interact", "interest", "interior", "internal", "internet", "interval", "intimate", "invasion", "investor", "involved", "isolated", "judgment", "judicial", "junction", "keyboard", "landlord", "language", "laughter", "learning", "leverage", "lifetime", "lighting", "likewise", "limiting", "literary", "location", "magazine", "magnetic", "maintain", "majority", "marginal", "marriage", "material", "maximize", "mechanic", "medieval", "memorial", "merchant", "midnight", "military", "minimize", "minister", "ministry", "minority", "mobility", "moderate", "momentum", "monopoly", "mortgage", "mountain", "movement", "multiple", "national", "negative", "nineteen", "nominate", "northern", "notebook", "numerous", "observer", "obstacle", "obtained", "occasion", "occupied", "offering", "official", "olympics", "operator", "opponent", "opposite", "optimism", "ordinary", "organism", "organize", "original", "outcomes", "outdoors", "outreach", "overseas", "overview", "parallel", "parental", "particle", "patience", "peaceful", "peculiar", "periodic", "personal", "persuade", "petition", "physical", "pipeline", "platform", "pleasant", "pleasure", "politics", "portable", "portrait", "position", "positive", "possible", "powerful", "practice", "precious", "pregnant", "presence", "preserve", "pressing", "prestige", "previous", "priority", "prisoner", "probable", "probably", "producer", "profound", "progress", "property", "proposal", "prospect", "protocol", "provided", "provider", "province", "publicly", "purchase", "pursuant", "quantity", "question", "rational", "reaction", "received", "receiver", "recovery", "regional", "register", "relation", "relative", "relevant", "reliable", "religion", "remember", "rendered", "repeated", "reporter", "required", "research", "reserved", "resident", "resolved", "resource", "response", "restrict", "retained", "revealed", "revision", "romantic", "sanction", "scenario", "schedule", "scrutiny", "seasonal", "secondly", "security", "selected", "senators", "sensible", "sentence", "separate", "sequence", "sergeant", "services", "settling", "severely", "severity", "shipping", "shortage", "shoulder", "simplify", "simulate", "situated", "sleeping", "slightly", "software", "solution", "somebody", "somewhat", "southern", "speaking", "specific", "spectrum", "spending", "sporting", "standard", "standing", "stimulus", "straight", "strategy", "strength", "striking", "struggle", "stunning", "subgroup", "subject", "suborder", "subsided", "subtlety", "suburban", "suitable", "superior", "supposed", "surprise", "survival", "survivor", "symbolic", "sympathy", "syndrome", "tactical", "talented", "taxation", "taxpayer", "teaching", "tendency", "terminal", "terrible", "thinking", "thorough", "thousand", "timeline", "together", "tolerant", "tomorrow", "tracking", "training", "transfer", "transmit", "treasure", "treating", "triangle", "tropical", "turnover", "ultimate", "umbrella", "universe", "unlikely", "unstable", "upheaval", "uploaded", "valuable", "variable", "vertical", "victoria", "violence", "volatile", "warranty", "weakness", "weighted", "whatever", "whenever", "wherever", "wildlife", "wireless", "withdraw", "woodland", "workshop", "yourself"]
+};
+
+for (let n = 5; n <= 8; n++) {
+  if (!ANS[n] || !ANS[n].length) {
+    ANS[n] = INLINE_WORDS[n].filter(w => w.length === n);
+    ANS[n].forEach(w => ALLOWED[n].add(w));
+  }
+}
+// Longest word length that has playable answers (16 with the full words.js, 8 if only the built-in backup is available).
+const LMIN = 5;
+let LMAX = LMIN - 1;
+for (let n = LMIN; n <= 16 && ANS[n] && ANS[n].length; n++) LMAX = n;
+const poolFor = n => ANS[n] && ANS[n].length ? ANS[n] : ANS[LMAX];
+const clampLen = n => Math.min(LMAX, Math.max(LMIN, Number.isInteger(n) ? n : LMIN));
+
+const KEYS = {};
+let refreshWsLobby = () => {};
 const ROWS = 6, MISSES = 6;
-const DEFAULTS = { hard: false, clear: 55, len: 5, cb: false };
+const DEFAULTS = { v: 2, hard: false, clear: 55, len: 5, hlen: 7, wsn: 5, cb: false, sound: true, haptics: true, music: true, vol: 30 };
 let cfg = { ...DEFAULTS };
 let COLS = 5, target, gameHard = false, grid, row = 0, col = 0, over = true, busy = false, keyState, history = [], started = false, noticeTimer;
 let hword = "", hguess = new Set(), hmiss = 0, hover = true;
@@ -338,7 +550,27 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) {} }
 };
 
-/* ---------- Stats & sharing ---------- */
+/* Range sliders: --p drives the filled part of the track in WebKit/Blink (Firefox fills natively) */
+function paintRange(el) {
+  const min = +el.min || 0, max = el.max === "" ? 100 : +el.max, span = max - min || 1;
+  el.style.setProperty("--p", ((+el.value - min) / span * 100) + "%");
+}
+document.addEventListener("input", e => { if (e.target && e.target.type === "range") paintRange(e.target); });
+// Binds a slider to a cfg key; returns a refresh() that re-reads cfg (clamped) into the slider and its label.
+function setupSlider(id, key, min, max, fmt, onChange) {
+  const el = $(id), out = $(id + "-out");
+  const update = () => { out.textContent = fmt(+el.value); if (onChange) onChange(+el.value); };
+  el.oninput = () => { cfg[key] = +el.value; update(); };
+  el.onchange = saveCfg;
+  return (hi) => {
+    const top = hi == null ? max : Math.min(max, hi);
+    el.min = min; el.max = top; el.step = 1;
+    cfg[key] = Math.min(top, Math.max(min, Number.isInteger(cfg[key]) ? cfg[key] : min));
+    el.value = cfg[key]; paintRange(el); update();
+  };
+}
+
+/* Stats & Sharing */
 function getStats() { try { return Object.assign({ played: 0, won: 0, streak: 0, best: 0 }, JSON.parse(store.get("cwg-stats") || "{}")); } catch (e) { return { played: 0, won: 0, streak: 0, best: 0 }; } }
 function recordResult(won) {
   const st = getStats(); st.played++; st.won += won ? 1 : 0; st.streak = won ? st.streak + 1 : 0; st.best = Math.max(st.best, st.streak);
@@ -347,25 +579,27 @@ function recordResult(won) {
 function statLine(st) { return `Played ${st.played} · Won ${st.won} · Streak ${st.streak} · Best ${st.best}`; }
 function shareText(won) {
   const em = { correct: cfg.cb ? "🟧" : "🟩", present: "🟦", absent: "⬛" };
-  return `Archive Wordle ${COLS} letters ${won ? history.length : "X"}/${ROWS}${gameHard ? "*" : ""}\n` + history.map(h => h.colors.map(c => em[c]).join("")).join("\n");
+  return `Clyde's Wordle ${COLS} letters ${won ? history.length : "X"}/${ROWS}${gameHard ? "*" : ""}\n` + history.map(h => h.colors.map(c => em[c]).join("")).join("\n");
 }
 async function share(won) {
   const text = shareText(won);
   try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e.name === "AbortError") return; }
-  try { await navigator.clipboard.writeText(text); notify("Result copied", "Paste it anywhere to share.", "good"); }
-  catch (e) { notify("Couldn’t copy", "Select and copy your result manually.", "bad"); }
+  try { await navigator.clipboard.writeText(text); notify("Result copied", "Paste anywhere to share.", "good"); }
+  catch (e) { notify("Couldn’t copy", "Please copy manually.", "bad"); }
 }
 function endSheet(title, bodyEl, won) {
-  const st = recordResult(won), p = document.createElement("p"); p.className = "statline"; p.textContent = statLine(st);
+  const st = recordResult(won), p = document.createElement("p"); p.style.cssText = "font-size:.9rem;opacity:.9;margin-top:.4rem"; p.textContent = statLine(st);
   const box = document.createElement("div"); box.append(bodyEl, p);
-  openSheet(title, box, [{ label: "Play again", fn: newGame }, { label: "Share result", keep: true, fn: () => share(won) }, { label: "Main menu", fn: () => show("menu") }]);
+  openSheet(title, box, [{ label: "Play again", fn: newGame }, { label: "Change length", fn: () => show("lobby") }, { label: "Share result", keep: true, fn: () => share(won) }, { label: "Main menu", fn: () => show("menu") }]);
 }
 
-/* ---------- Screens & helpers ---------- */
-const SCREENS = ["menu", "lobby", "settings", "game", "hangman"];
+/* Screens & Dialogs */
+const SCREENS = ["title", "menu", "about", "lobby", "hlobby", "wslobby", "settings", "game", "hangman", "anagram", "wordsearch"];
 function show(id) {
   SCREENS.forEach(s => $(s).classList.toggle("active", s === id));
   if (id === "lobby") refreshLobby();
+  if (id === "hlobby") refreshHLobby();
+  if (id === "wslobby") refreshWsLobby();
   if (id === "game") fit();
 }
 const current = () => SCREENS.find(s => $(s).classList.contains("active"));
@@ -404,7 +638,6 @@ function openSheet(title, body, buttons) {
   backdrop.classList.add("open"); actions.firstChild.focus();
 }
 
-/* Shared on-screen key builder */
 function makeKeys(container, rows, prefix, onKey) {
   container.innerHTML = "";
   rows.forEach(line => {
@@ -421,34 +654,44 @@ function makeKeys(container, rows, prefix, onKey) {
   });
 }
 
-/* ---------- Adaptive palette (from the background image) ---------- */
-function setPalette(p) { root.style.setProperty("--h", p.h); root.style.setProperty("--ch", p.ch); }
-function derive(h) {
-  const d = Math.abs(((h - 155 + 540) % 360) - 180);      // distance from green
-  return { h: Math.round(h), ch: d < 45 ? 38 : 155 };       // keep "correct" distinct from the main hue
+/* Background & Adaptive Theme Engine */
+function setPalette(p) {
+  root.style.setProperty("--h", p.h);
+  root.style.setProperty("--ch", p.ch);
+  if (p.s) root.style.setProperty("--s", p.s + "%");
 }
-function dominantHue(img) {
+function derive(h) {
+  const d = Math.abs(((h - 155 + 540) % 360) - 180);
+  return { h: Math.round(h), ch: d < 45 ? 38 : 155, s: 72 };
+}
+function dominantColor(img) {
   const N = 48, c = document.createElement("canvas"); c.width = c.height = N;
-  const x = c.getContext("2d"); x.drawImage(img, 0, 0, N, N);
-  const px = x.getImageData(0, 0, N, N).data, bins = new Array(36).fill(0); let tot = 0;
+  const ctx = c.getContext("2d"); ctx.drawImage(img, 0, 0, N, N);
+  const px = ctx.getImageData(0, 0, N, N).data;
+  const bins = new Array(36).fill(0);
+  let totalW = 0;
   for (let i = 0; i < px.length; i += 4) {
     const r = px[i] / 255, g = px[i + 1] / 255, b = px[i + 2] / 255;
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
     if (d < .08) continue;
     let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
     h = (h * 60 + 360) % 360;
-    const l = (mx + mn) / 2, w = d * (1 - Math.abs(2 * l - 1));   // colorful, mid-tone pixels count most
-    bins[Math.floor(h / 10) % 36] += w; tot += w;
+    const l = (mx + mn) / 2, w = d * (1 - Math.abs(2 * l - 1));
+    bins[Math.floor(h / 10) % 36] += w; totalW += w;
   }
-  if (tot < N * N * .01) return null;                          // basically grayscale
+  if (totalW < N * N * .01) return null;
   let best = 0, bi = 0;
-  for (let i = 0; i < 36; i++) { const v = bins[i] * 2 + bins[(i + 35) % 36] + bins[(i + 1) % 36]; if (v > best) { best = v; bi = i; } }
+  for (let i = 0; i < 36; i++) {
+    const v = bins[i] * 2 + bins[(i + 35) % 36] + bins[(i + 1) % 36];
+    if (v > best) { best = v; bi = i; }
+  }
   return bi * 10 + 5;
 }
 function adapt(url, save) {
   const im = new Image();
   im.onload = () => {
-    let h = null; try { h = dominantHue(im); } catch (e) {}      // file:// images can block pixel reads
+    let h = null;
+    try { h = dominantColor(im); } catch (e) { h = 218; }
     const p = derive(h == null ? 218 : h);
     setPalette(p);
     if (save) store.set("cwg-pal", JSON.stringify(p));
@@ -456,23 +699,40 @@ function adapt(url, save) {
   im.src = url;
 }
 
-/* ---------- Settings ---------- */
+function setBg(dataUrl) {
+  const el = $("bg");
+  if (dataUrl) {
+    el.style.backgroundImage = `var(--bg-overlay), url("${dataUrl}")`;
+  } else {
+    el.style.backgroundImage = 'var(--bg-overlay), url("background.png")';
+  }
+}
+
 function applyClear() {
   root.style.setProperty("--tint", (0.74 - 0.70 * cfg.clear / 100).toFixed(3));
-  $("clear").value = cfg.clear; $("clear-out").textContent = cfg.clear + "%";
+  if ($("clear")) { $("clear").value = cfg.clear; $("clear-out").textContent = cfg.clear + "%"; paintRange($("clear")); }
 }
-function applyCb() { $("cb").setAttribute("aria-checked", cfg.cb); root.toggleAttribute("data-cb", cfg.cb); }
-function applyHard() { $("hard").setAttribute("aria-checked", cfg.hard); }
+function applyCb() {
+  if ($("cb")) $("cb").setAttribute("aria-checked", cfg.cb);
+  root.toggleAttribute("data-cb", cfg.cb);
+}
+function applyHard() { if ($("hard")) $("hard").setAttribute("aria-checked", cfg.hard); }
 function saveCfg() { store.set("cwg-settings", JSON.stringify(cfg)); }
-function setBg(url) { root.style.setProperty("--bg", url ? `url("${url}")` : 'url("background.png")'); }
 
 function loadSettings() {
   try {
     const s = JSON.parse(store.get("cwg-settings") || "{}");
     if (typeof s.hard === "boolean") cfg.hard = s.hard;
     if (Number.isFinite(s.clear)) cfg.clear = Math.min(100, Math.max(0, s.clear));
-    if ([5, 6, 7, 8].includes(s.len)) cfg.len = s.len;
+    if (Number.isInteger(s.len) && s.len >= 5 && s.len <= 16) cfg.len = s.len;
+    if (Number.isInteger(s.hlen) && s.hlen >= 5 && s.hlen <= 16) cfg.hlen = s.hlen;
+    if (Number.isInteger(s.wsn) && s.wsn >= 3 && s.wsn <= 15) cfg.wsn = s.wsn;
     if (typeof s.cb === "boolean") cfg.cb = s.cb;
+    if (typeof s.sound === "boolean") cfg.sound = s.sound;
+    if (typeof s.haptics === "boolean") cfg.haptics = s.haptics;
+    // Music is ON by default: settings saved before v2 (when the default was off) don't carry over their old "off".
+    if (s.v === 2 && typeof s.music === "boolean") cfg.music = s.music;
+    if (Number.isFinite(s.vol)) cfg.vol = Math.min(100, Math.max(0, s.vol));
   } catch (e) {}
   const bg = store.get("cwg-bg"), pal = store.get("cwg-pal");
   if (bg) setBg(bg);
@@ -486,69 +746,192 @@ $("hard").onclick = () => {
 $("cb").onclick = () => { cfg.cb = !cfg.cb; applyCb(); saveCfg(); };
 $("clear").oninput = e => { cfg.clear = +e.target.value; applyClear(); };
 $("clear").onchange = saveCfg;
+
 $("upload").onclick = () => $("file").click();
 $("file").onchange = e => {
   const f = e.target.files[0]; e.target.value = "";
   if (!f) return;
   if (!f.type.startsWith("image/")) return notify("Not an image", "Choose a JPG, PNG or WebP file.", "bad");
-  const url = URL.createObjectURL(f), img = new Image();
-  img.onload = () => {
-    const k = Math.min(1, 1920 / Math.max(img.width, img.height));
-    const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    const data = c.toDataURL("image/jpeg", .85);
-    URL.revokeObjectURL(url);
-    setBg(data); adapt(data, true);
-    if (store.set("cwg-bg", data)) notify("Background updated", "Colors now match your picture.", "good");
-    else { store.del("cwg-pal"); notify("Background updated", "Too large to save, so it lasts until you close this page."); }
+  const reader = new FileReader();
+  reader.onerror = () => notify("Couldn’t read image", "Try a different file.", "bad");
+  reader.onload = ev => {
+    const raw = ev.target.result, im = new Image();
+    im.onerror = () => notify("Unsupported image", "Choose a JPG, PNG or WebP file.", "bad");
+    im.onload = () => {
+      // Shrink big photos (max 1920px) so they fit in browser storage and keep working after a reload.
+      let data = raw;
+      try {
+        const sc = Math.min(1, 1920 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc));
+        const g = c.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+        data = c.toDataURL("image/jpeg", .85);
+      } catch (err) { data = raw; }
+      setBg(data);
+      const saved = store.set("cwg-bg", data);
+      if (!saved) store.del("cwg-bg");
+      adapt(data, saved);
+      if (saved) notify("Background updated", "Saved on this device. Colors matched to the picture.", "good");
+      else notify("Background updated", "Active for this visit only (storage is full).", "good");
+    };
+    im.src = raw;
   };
-  img.onerror = () => { URL.revokeObjectURL(url); notify("Couldn’t read that image", "Try a different file.", "bad"); };
-  img.src = url;
+  reader.readAsDataURL(f);
 };
-$("default-bg").onclick = () => { store.del("cwg-bg"); store.del("cwg-pal"); setBg(null); adapt("background.png", false); notify("Default background restored", null, "good"); };
+$("default-bg").onclick = () => {
+  store.del("cwg-bg"); store.del("cwg-pal");
+  setBg(null); adapt("background.png", false);
+  notify("Default background restored", null, "good");
+};
 $("reset").onclick = () => openSheet("Reset all settings?",
-  "Hard mode, word length, colors, glass transparency and the background go back to their defaults. Your current game isn’t affected.",
+  "Hard mode, game lengths, colors, music, glass transparency and background return to defaults.",
   [{ label: "Cancel" }, { label: "Reset", danger: true, fn: () => {
     cfg = { ...DEFAULTS }; ["cwg-settings", "cwg-bg", "cwg-pal"].forEach(store.del);
-    setBg(null); setPalette({ h: 218, ch: 155 }); adapt("background.png", false); applyClear(); applyHard(); applyCb();
+    setBg(null); setPalette({ h: 218, ch: 155, s: 70 }); adapt("background.png", false); applyClear(); applyHard(); applyCb(); applyFx();
     notify("Settings reset", null, "good");
   } }]);
 
-/* ---------- Wordle ---------- */
-function fit() {   // size tiles so any word length fits the panel
-  const w = Math.min(window.innerWidth * .94, 440) - 48;
-  const byW = Math.floor((w - 7 * (COLS - 1)) / COLS), byH = Math.floor((window.innerHeight - 330 - 7 * (ROWS - 1)) / ROWS);
-  root.style.setProperty("--tile", Math.max(28, Math.min(54, byW, byH)) + "px");
+/* ==========================================================
+   2. AUDIO SYNTHESIZER & GENERATIVE BGM
+   ========================================================== */
+const FX = (() => {
+  let ac = null;
+  const audio = () => {
+    if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (C) ac = new C(); }
+    if (ac && ac.state === "suspended") ac.resume();
+    return ac;
+  };
+  function tone(f, d = .08, type = "sine", g = .1, at = 0) {
+    if (!cfg.sound) return;
+    try {
+      const a = audio(); if (!a) return;
+      const o = a.createOscillator(), v = a.createGain(), t = a.currentTime + at;
+      o.type = type; o.frequency.value = f;
+      v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(.0001, t + d);
+      o.connect(v); v.connect(a.destination); o.start(t); o.stop(t + d);
+    } catch (e) {}
+  }
+  const vib = p => { if (cfg.haptics && navigator.vibrate) try { navigator.vibrate(p); } catch (e) {} };
+  const seq = (fs, step, type, g, d) => fs.forEach((f, i) => tone(f, d, type, g, i * step));
+  return {
+    audio,
+    click() { tone(480, .04, "sine", .06); vib(8); },
+    key()   { tone(620, .035, "triangle", .07); vib(6); },
+    tap()   { tone(380, .04, "triangle", .06); vib(6); },
+    flip(i) { tone(380 + i * 55, .09, "sine", .08); },
+    good()  { tone(660, .1, "sine", .1); tone(880, .12, "sine", .09, .07); vib(15); },
+    bad()   { tone(150, .2, "sawtooth", .12); vib([40, 30, 40]); },
+    win()   { seq([523, 659, 784, 1047], .1, "triangle", .14, .3); vib([30, 40, 30, 40, 80]); },
+    lose()  { seq([392, 330, 262, 196], .12, "sawtooth", .1, .26); vib([120, 60, 200]); }
+  };
+})();
+
+const Music = (() => {
+  const CH = [[220, 261.63, 329.63], [174.61, 220, 261.63], [261.63, 329.63, 392], [196, 246.94, 293.66]];
+  const spb = 60 / 76;
+  let master = null, timer = null, nextT = 0, beat = 0, unlocked = false;
+  function note(a, f, t, d, type, g, atk) {
+    const o = a.createOscillator(), v = a.createGain();
+    o.type = type; o.frequency.value = f;
+    v.gain.setValueAtTime(.0001, t); v.gain.linearRampToValueAtTime(g, t + atk); v.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(v); v.connect(master); o.start(t); o.stop(t + d + .05);
+  }
+  function schedule() {
+    const a = FX.audio(); if (!a || !master) return;
+    while (nextT < a.currentTime + .6) {
+      const chord = CH[Math.floor(beat / 4) % CH.length];
+      if (beat % 4 === 0) {
+        chord.forEach(f => note(a, f, nextT, spb * 4.2, "sine", .08, 1.2));
+        note(a, chord[0] / 2, nextT, spb * 3.8, "sine", .12, .1);
+      }
+      [0, .5].forEach(h => note(a, chord[(beat * 2 + (h ? 1 : 0)) % 3] * 2, nextT + h * spb, spb * 1.4, "triangle", .03, .01));
+      nextT += spb; beat++;
+    }
+  }
+  const level = () => (cfg.vol / 100) * .6;
+  function start() {
+    const a = FX.audio(); if (!a) return;
+    if (!master) { master = a.createGain(); master.gain.value = 0; master.connect(a.destination); }
+    master.gain.setTargetAtTime(level(), a.currentTime, .8);
+    if (!timer) { nextT = a.currentTime + .1; timer = setInterval(schedule, 150); }
+  }
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (master) master.gain.setTargetAtTime(0, FX.audio().currentTime, .2);
+  }
+  return {
+    sync() { if (!unlocked) return; if (cfg.music && !document.hidden) start(); else stop(); },
+    unlock() { if (!unlocked) { unlocked = true; this.sync(); } else if (cfg.music) { const a = FX.audio(); if (a && !timer) this.sync(); } }
+  };
+})();
+
+function applyFx() {
+  if ($("snd")) $("snd").setAttribute("aria-checked", cfg.sound);
+  if ($("hap")) $("hap").setAttribute("aria-checked", cfg.haptics);
+  if ($("mus")) $("mus").setAttribute("aria-checked", cfg.music);
+  if ($("vol")) { $("vol").value = cfg.vol; $("vol-out").textContent = cfg.vol + "%"; paintRange($("vol")); }
+  const fab = $("music-fab");
+  if (fab) { fab.classList.toggle("off", !cfg.music); fab.setAttribute("aria-pressed", cfg.music); }
+  Music.sync();
+}
+if ($("snd")) $("snd").onclick = () => { cfg.sound = !cfg.sound; applyFx(); saveCfg(); FX.good(); };
+if ($("hap")) $("hap").onclick = () => { cfg.haptics = !cfg.haptics; applyFx(); saveCfg(); FX.click(); };
+if ($("mus")) $("mus").onclick = $("music-fab").onclick = () => { cfg.music = !cfg.music; Music.unlock(); applyFx(); saveCfg(); FX.click(); };
+if ($("vol")) { $("vol").oninput = e => { cfg.vol = +e.target.value; applyFx(); }; $("vol").onchange = saveCfg; }
+["pointerdown", "keydown", "touchend", "click"].forEach(t => document.addEventListener(t, () => Music.unlock(), { passive: true }));
+document.addEventListener("visibilitychange", () => Music.sync());
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b && !b.disabled && !b.classList.contains("key") && !b.classList.contains("tile") && !["snd", "hap", "mus", "music-fab"].includes(b.id)) FX.click();
+});
+
+/* ==========================================================
+   3. WORDLE (Strict dictionary lookup in words.js)
+   ========================================================== */
+function fit() {
+  // Long words get a wider panel (on big screens) and tighter tile gaps so every letter fits on one row.
+  const gap = COLS > 12 ? 3 : COLS > 8 ? 4 : 7;
+  const maxW = COLS > 8 ? 760 : 440;
+  const pad = window.innerWidth <= 480 ? 34 : 48;
+  const w = Math.min(window.innerWidth * .94, maxW) - pad;
+  const byW = Math.floor((w - gap * (COLS - 1)) / COLS), byH = Math.floor((window.innerHeight - 330 - gap * (ROWS - 1)) / ROWS);
+  root.style.setProperty("--gmax", maxW + "px");
+  root.style.setProperty("--gap", gap + "px");
+  root.style.setProperty("--tile", Math.max(14, Math.min(54, byW, Math.max(byH, Math.min(byW, 22)))) + "px");
 }
 function buildBoard() {
   boardEl.innerHTML = ""; boardEl.style.setProperty("--cols", COLS);
   for (let r = 0; r < ROWS; r++) {
     const rowEl = document.createElement("div"); rowEl.className = "row"; rowEl.style.setProperty("--cols", COLS);
-    for (let c = 0; c < COLS; c++) { const t = document.createElement("div"); t.className = "tile"; t.id = `t-${r}-${c}`; t.setAttribute("role", "gridcell"); t.setAttribute("aria-label", "empty"); rowEl.appendChild(t); }
+    for (let c = 0; c < COLS; c++) {
+      const t = document.createElement("div"); t.className = "tile"; t.id = `t-${r}-${c}`;
+      t.setAttribute("role", "gridcell"); t.setAttribute("aria-label", "empty"); rowEl.appendChild(t);
+    }
     boardEl.appendChild(rowEl);
   }
 }
 function newGame() {
-  COLS = cfg.len; gameHard = cfg.hard;
-  target = ANS[COLS][Math.floor(Math.random() * ANS[COLS].length)];
+  COLS = clampLen(cfg.len); gameHard = cfg.hard;
+  const pool = poolFor(COLS);
+  target = pool[Math.floor(Math.random() * pool.length)];
   grid = Array.from({ length: ROWS }, () => Array(COLS).fill(""));
   row = 0; col = 0; over = false; busy = false; keyState = {}; history = []; started = true;
   $("mode-pill").textContent = COLS + " letters" + (gameHard ? " · Hard" : "");
-  buildBoard(); makeKeys($("keyboard"), ["qwertyuiop", "asdfghjkl", ">zxcvbnm<"], "k-", handleKey); updateLeft(); fit();
+  buildBoard(); makeKeys($("keyboard"), ["qwertyuiop", "asdfghjkl", ">zxcvbnm<"], "k-", handleWordleKey); updateLeft(); fit();
 }
 function updateLeft() { $("left-pill").textContent = plural(ROWS - row, "guess") + " left"; }
-function handleKey(key) {
+function handleWordleKey(key) {
   if (over || busy) return;
-  if (key === "Enter") return submit();
-  if (key === "Backspace") { if (col > 0) { col--; grid[row][col] = ""; paint(row, col); } return; }
-  if (/^[a-z]$/i.test(key) && col < COLS) { grid[row][col] = key.toLowerCase(); paint(row, col); col++; }
+  if (key === "Enter") return submitWordle();
+  if (key === "Backspace") { if (col > 0) { col--; grid[row][col] = ""; paint(row, col); FX.tap(); } return; }
+  if (/^[a-z]$/i.test(key) && col < COLS) { grid[row][col] = key.toLowerCase(); paint(row, col); col++; FX.key(); }
 }
 function paint(r, c) { const t = $(`t-${r}-${c}`); t.textContent = grid[r][c]; t.setAttribute("aria-label", grid[r][c] || "empty"); t.classList.toggle("filled", !!grid[r][c]); }
-function reject(title, body) {
-  notify(title, body, "bad");
-  const el = boardEl.children[row]; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+function rejectWordle(title, body) {
+  FX.bad(); notify(title, body, "bad");
+  const el = boardEl.children[row]; if (el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
 }
-function score(guess, tgt) {   // greens first, then "present" from the remaining letters
+function scoreWordle(guess, tgt) {
   const out = Array(COLS).fill("absent"), bag = {};
   for (let i = 0; i < COLS; i++) { if (guess[i] === tgt[i]) out[i] = "correct"; else bag[tgt[i]] = (bag[tgt[i]] || 0) + 1; }
   for (let i = 0; i < COLS; i++) { if (out[i] === "absent" && bag[guess[i]] > 0) { out[i] = "present"; bag[guess[i]]--; } }
@@ -565,19 +948,22 @@ function hardCheck(guess) {
   }
   return null;
 }
-function submit() {
-  if (col < COLS) return reject("Not enough letters");
+function submitWordle() {
+  if (col < COLS) return rejectWordle("Not enough letters");
   const guess = grid[row].join("");
-  if (!ALLOWED[COLS].has(guess)) return reject("Not in word list", `“${guess.toUpperCase()}” isn’t a valid word.`);
-  if (gameHard) { const err = hardCheck(guess); if (err) return reject("Hard mode", err); }
+  // Strict dictionary lookup from words_3.js
+  if (ALLOWED[COLS] && !ALLOWED[COLS].has(guess)) {
+    return rejectWordle("Not in word list", `“${guess.toUpperCase()}” isn’t a valid word.`);
+  }
+  if (gameHard) { const err = hardCheck(guess); if (err) return rejectWordle("Hard mode", err); }
 
-  const colors = score(guess, target);
+  const colors = scoreWordle(guess, target);
   history.push({ guess, colors });
   busy = true;
-  const r = row, rank = { absent: 1, present: 2, correct: 3 }, STEP = 260;
+  const r = row, rank = { absent: 1, present: 2, correct: 3 }, STEP = Math.min(260, Math.floor(2000 / COLS));
   colors.forEach((state, i) => setTimeout(() => {
-    const t = $(`t-${r}-${i}`); t.classList.add("flip");
-    setTimeout(() => { t.classList.add(state); t.setAttribute("aria-label", guess[i] + ", " + state); }, 300);          // recolor at the flip's midpoint
+    const t = $(`t-${r}-${i}`); t.classList.add("flip"); FX.flip(i);
+    setTimeout(() => { t.classList.add(state); t.setAttribute("aria-label", guess[i] + ", " + state); }, 300);
   }, i * STEP));
 
   setTimeout(() => {
@@ -585,11 +971,11 @@ function submit() {
     Object.entries(keyState).forEach(([ch, st]) => { const k = $("k-" + ch); if (k) k.className = "key " + st; });
     busy = false;
     if (guess === target) {
-      over = true; const n = r + 1;
+      over = true; const n = r + 1; FX.win(); colors.forEach((_, i) => { const t = $(`t-${r}-${i}`); t.style.setProperty("--i", i); t.classList.add("win"); });
       notify("Nice!", `Solved in ${plural(n, "guess")}.`, "good");
       setTimeout(() => endSheet("You won", msg("The word was ", target, `. You solved it in ${plural(n, "guess")}.`), true), 900);
     } else if (r === ROWS - 1) {
-      over = true;
+      over = true; FX.lose();
       setTimeout(() => endSheet("Out of guesses", msg("The word was ", target, ". Give it another go."), false), 500);
     } else {
       const left = ROWS - r - 1; notify("Try again", `${plural(left, "guess")} left.`, "");
@@ -598,42 +984,43 @@ function submit() {
   row++; col = 0; updateLeft();
 }
 
-/* Lobby */
+const syncLen = setupSlider("len", "len", LMIN, 16, n => n + " letters");
 function refreshLobby() {
-  const seg = $("len-seg"); seg.innerHTML = "";
-  [5, 6, 7, 8].forEach(n => {
-    const b = document.createElement("button"); b.textContent = n; b.setAttribute("role", "radio");
-    b.setAttribute("aria-checked", cfg.len === n); b.setAttribute("aria-label", n + " letters");
-    b.onclick = () => { cfg.len = n; saveCfg(); refreshLobby(); seg.children[n - 5].focus(); };
-    seg.appendChild(b);
-  });
-  $("lobby-hard").textContent = "Hard mode is " + (cfg.hard ? "on" : "off") + ". Change it in Settings.";
+  syncLen(LMAX);
+  applyHard();
   $("resume").hidden = !inProgress();
   $("resume").textContent = "Resume game (" + COLS + " letters)";
-  $("start").disabled = !WORDS_OK;
 }
 const startWordle = () => { newGame(); show("game"); };
-$("m-wordle").onclick = () => {
-  if (!WORDS_OK) return notify("Word list missing", "Keep words.js in the same folder as this page.", "bad");
-  show("lobby");
-};
+$("m-wordle").onclick = () => show("lobby");
 $("start").onclick = () => inProgress()
   ? openSheet("Start a new game?", "Your current Wordle game will be lost.", [{ label: "Cancel" }, { label: "New game", fn: startWordle }])
   : startWordle();
 $("resume").onclick = () => show("game");
 $("lobby-back").onclick = () => { show("menu"); $("m-wordle").focus(); };
 $("to-menu").onclick = () => { show("menu"); $("m-wordle").focus(); };
+KEYS.title = e => { if (e.key === "Enter") { e.preventDefault(); show("menu"); } };
+KEYS.game = e => {
+  if (e.key === "Enter" || e.key === "Backspace") { e.preventDefault(); handleWordleKey(e.key); }
+  else if (/^[a-z]$/i.test(e.key)) handleWordleKey(e.key);
+};
 
-/* ---------- Hangman ---------- */
+/* ==========================================================
+   4. HANGMAN, ANAGRAM, WORD SEARCH MODULES
+   ========================================================== */
+
+/* --- HANGMAN --- */
 function newHangman() {
-  const pool = HANG_WORDS.length ? HANG_WORDS : ANS[5];
+  const pool = poolFor(clampLen(cfg.hlen));
   hword = pool[Math.floor(Math.random() * pool.length)];
   hguess = new Set(); hmiss = 0; hover = false;
   makeKeys($("hkeys"), ["abcdefghijklmnopqrstuvwxyz"], "h-", hangKey);
   $("hkeys").firstChild.style.display = "contents";
   $("h-len").textContent = hword.length + " letters";
+  
+  // Single-line auto-scale formula
   const w = Math.min(window.innerWidth * .94, 440) - 48;
-  $("hword").style.setProperty("--slot", Math.max(18, Math.min(34, Math.floor((w - 6 * (hword.length - 1)) / hword.length))) + "px");
+  $("hword").style.setProperty("--slot", Math.max(12, Math.min(34, Math.floor((w - 5 * (hword.length - 1)) / hword.length))) + "px");
   renderHang();
 }
 function renderHang(reveal) {
@@ -650,26 +1037,246 @@ function hangKey(ch) {
   if (hover || hguess.has(ch)) return;
   hguess.add(ch);
   const k = $("h-" + ch), hit = hword.includes(ch);
-  k.className = "key " + (hit ? "correct" : "absent"); k.disabled = true;
+  if (k) { k.className = "key " + (hit ? "correct" : "absent"); k.disabled = true; }
+  hit ? FX.good() : FX.bad();
   if (!hit) hmiss++;
   const won = [...hword].every(c => hguess.has(c)), lost = hmiss >= MISSES;
   renderHang(lost);
   if (won || lost) {
-    hover = true;
-    const after = [{ label: "Play again", fn: newHangman }, { label: "Main menu", fn: () => show("menu") }];
+    hover = true; won ? FX.win() : FX.lose();
+    const after = [{ label: "Play again", fn: newHangman }, { label: "Change length", fn: () => show("hlobby") }, { label: "Main menu", fn: () => show("menu") }];
     setTimeout(() => won
       ? openSheet("You won", msg("You found ", hword, ` with ${plural(hmiss, "miss")}.`), after)
       : openSheet("Out of misses", msg("The word was ", hword, ". Give it another go."), after), 700);
   }
 }
-$("m-hangman").onclick = () => {
-  if (!HANG_WORDS.length && !ANS[5].length) return notify("Word list missing", "Keep words.js in the same folder as this page.", "bad");
-  if (hover) newHangman();
-  show("hangman");
-};
+const syncHLen = setupSlider("hlen", "hlen", LMIN, 16, n => n + " letters");
+function refreshHLobby() { syncHLen(LMAX); $("h-resume").hidden = hover; $("h-resume").textContent = "Resume game (" + hword.length + " letters)"; }
+const startHangman = () => { newHangman(); show("hangman"); };
+$("m-hangman").onclick = () => show("hlobby");
+$("hlobby-back").onclick = () => { show("menu"); $("m-hangman").focus(); };
+$("h-start").onclick = () => !hover
+  ? openSheet("Start a new game?", "Your current Hangman game will be lost.", [{ label: "Cancel" }, { label: "New game", fn: startHangman }])
+  : startHangman();
+$("h-resume").onclick = () => show("hangman");
 $("h-menu").onclick = () => { show("menu"); $("m-hangman").focus(); };
+KEYS.hangman = e => { if (/^[a-z]$/i.test(e.key)) hangKey(e.key.toLowerCase()); };
 
-/* ---------- Menu, instructions, keyboard ---------- */
+/* --- ANAGRAM --- */
+(() => {
+  const S = { word: "", pool: [], used: [], score: 0, streak: 0, hints: 0, over: true };
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const key = w => [...w].sort().join("");
+  function shuffle(w) {
+    let a, t = 0;
+    do {
+      a = [...w];
+      for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    } while (a.join("") === w && t++ < 20);
+    return a;
+  }
+  function render() {
+    const ans = $("an-answer"), pool = $("an-pool"), n = S.word.length;
+    ans.innerHTML = pool.innerHTML = "";
+    const fitW = Math.floor((Math.min(innerWidth * .94, 440) - 48 - 7 * (n - 1)) / n);
+    root.style.setProperty("--an-tile", Math.max(30, Math.min(54, fitW)) + "px");
+    for (let i = 0; i < n; i++) {
+      const slot = document.createElement("div"); slot.className = "tile an";
+      if (S.used[i] !== undefined) { slot.textContent = S.pool[S.used[i]]; slot.classList.add("filled"); }
+      ans.appendChild(slot);
+    }
+    S.pool.forEach((ch, i) => {
+      const b = document.createElement("button"); b.className = "tile an"; b.textContent = ch;
+      b.disabled = S.used.includes(i); b.setAttribute("aria-label", "Letter " + ch); b.onclick = () => add(i);
+      pool.appendChild(b);
+    });
+    $("an-score").textContent = "Score " + S.score; $("an-streak").textContent = "Streak " + S.streak;
+    $("an-info").textContent = n + " letters. Tap or type them in order.";
+  }
+  function newRound() {
+    const len = pick([5, 6, 7, 8]);
+    const src = poolFor(len);
+    S.word = pick(src); S.pool = shuffle(S.word); S.used = []; S.hints = 0; S.over = false; render();
+  }
+  function add(i) {
+    if (S.over || S.used.length >= S.word.length || S.used.includes(i)) return;
+    S.used.push(i); FX.key(); render();
+    if (S.used.length === S.word.length) check();
+  }
+  function back() { if (!S.over && S.used.length) { S.used.pop(); FX.tap(); render(); } }
+  const after = [{ label: "Next word", fn: newRound }, { label: "Main menu", fn: () => show("menu") }];
+  function check() {
+    const g = S.used.map(i => S.pool[i]).join("");
+    if (g === S.word || (ALLOWED[g.length] && ALLOWED[g.length].has(g) && key(g) === key(S.word))) {
+      S.over = true; S.streak++; S.score += Math.max(5, S.word.length * 10 - S.hints * 8);
+      [...$("an-answer").children].forEach((t, i) => { t.classList.add("correct", "win"); t.style.setProperty("--i", i); });
+      $("an-score").textContent = "Score " + S.score; $("an-streak").textContent = "Streak " + S.streak;
+      FX.win();
+      setTimeout(() => openSheet("Solved", msg("You spelled ", g, g === S.word ? "." : ". Valid alternative word!"), after), 900);
+    } else {
+      S.streak = 0; FX.bad(); notify("Not a match", "Those letters don’t spell a valid word.", "bad");
+      const el = $("an-answer"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+      $("an-streak").textContent = "Streak 0";
+      setTimeout(() => { if (!S.over) { S.used = []; render(); } }, 650);
+    }
+  }
+  $("an-hint").onclick = () => {
+    if (S.over || S.used.length >= S.word.length) return;
+    if (!S.used.every((idx, k) => S.pool[idx] === S.word[k])) S.used = [];
+    const next = S.word[S.used.length], idx = S.pool.findIndex((c, i) => c === next && !S.used.includes(i));
+    if (idx > -1) { S.used.push(idx); S.hints++; FX.good(); render(); }
+    if (S.used.length === S.word.length) check();
+  };
+  $("an-shuffle").onclick = () => { if (!S.over) { S.used = []; S.pool = shuffle(S.word); render(); } };
+  $("an-clear").onclick = () => { if (!S.over) { S.used = []; render(); } };
+  $("an-skip").onclick = () => {
+    if (S.over) return;
+    S.over = true; S.streak = 0; render();
+    openSheet("Skipped", msg("The word was ", S.word, "."), after);
+  };
+  $("an-menu").onclick = () => { show("menu"); $("m-anagram").focus(); };
+  $("m-anagram").onclick = () => { if (S.over) newRound(); show("anagram"); };
+  KEYS.anagram = e => {
+    if (/^[a-z]$/i.test(e.key)) {
+      const c = e.key.toLowerCase(), i = S.pool.findIndex((x, k) => x === c && !S.used.includes(k));
+      if (i > -1) add(i);
+    } else if (e.key === "Backspace") back();
+  };
+})();
+
+/* --- WORD SEARCH --- */
+(() => {
+  let N = 8;
+  const DIRS = [[0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1, 0], [-1, -1], [1, -1]];
+  const W = { grid: [], words: [], found: new Set(), start: null, cur: [], anchor: null, drag: false, over: true };
+  const rand = n => Math.floor(Math.random() * n);
+  const gridEl = $("ws-grid"), cellAt = (r, c) => gridEl.children[r * N + c];
+
+  // Grid grows with the word count: 3-6 words -> 8x8, 7-9 -> 10x10, 10-12 -> 12x12, 13-15 -> 14x14.
+  const gridSize = k => k <= 6 ? 8 : k <= 9 ? 10 : k <= 12 ? 12 : 14;
+  const maxWordLen = n => Math.min(9, n - 1);
+  const rev = w => [...w].reverse().join("");
+  function sizeGrid() {
+    root.style.setProperty("--wsmax", (N >= 12 ? 580 : 440) + "px");
+    const avail = Math.min(innerWidth * .94, N >= 12 ? 580 : 440) - (innerWidth <= 480 ? 34 : 48);
+    const cell = Math.max(16, Math.min(44, Math.floor((avail - 4 * (N - 1)) / N)));
+    gridEl.style.setProperty("--cell", cell + "px");
+    gridEl.style.gridTemplateColumns = `repeat(${N}, var(--cell))`;
+  }
+  // Try to lay out `want` distinct words; restart with fresh words if one can't be placed. Returns { g, placed }.
+  function layout(want) {
+    const lens = []; for (let n = 5; n <= maxWordLen(N); n++) if (ANS[n] && ANS[n].length) lens.push(n);
+    const pool = lens.flatMap(n => ANS[n]);
+    let best = null;
+    for (let attempt = 0; attempt < 150; attempt++) {
+      const picks = [];
+      for (let guard = 0; picks.length < want && guard < 4000; guard++) {
+        const w = pool[rand(pool.length)];
+        if (picks.some(p => p === w || p.includes(w) || w.includes(p) || p.includes(rev(w)) || w.includes(rev(p)))) continue;
+        picks.push(w);
+      }
+      const g = Array.from({ length: N }, () => Array(N).fill("")), placed = [];
+      picks.sort((a, b) => b.length - a.length).forEach(w => {
+        for (let t = 0; t < 300; t++) {
+          const [dr, dc] = DIRS[rand(8)], r = rand(N), c = rand(N), er = r + dr * (w.length - 1), ec = c + dc * (w.length - 1);
+          if (er < 0 || er >= N || ec < 0 || ec >= N) continue;
+          if ([...w].some((ch, i) => g[r + dr * i][c + dc * i] && g[r + dr * i][c + dc * i] !== ch)) continue;
+          [...w].forEach((ch, i) => { g[r + dr * i][c + dc * i] = ch; });
+          placed.push(w);
+          return;
+        }
+      });
+      if (!best || placed.length > best.placed.length) best = { g, placed };
+      if (placed.length === want) break;
+    }
+    return best;
+  }
+  function build() {
+    const want = Math.min(15, Math.max(3, Number.isInteger(cfg.wsn) ? cfg.wsn : 5));
+    N = gridSize(want);
+    const { g, placed } = layout(want);
+    const abc = "abcdefghijklmnopqrstuvwxyz";
+    g.forEach(row => row.forEach((v, c) => { if (!v) row[c] = abc[rand(26)]; }));
+    Object.assign(W, { grid: g, words: placed, found: new Set(), start: null, cur: [], anchor: null, drag: false, over: false });
+    sizeGrid();
+    gridEl.innerHTML = "";
+    g.forEach((row, r) => row.forEach((ch, c) => {
+      const d = document.createElement("div"); d.className = "ws-cell"; d.textContent = ch;
+      d.dataset.r = r; d.dataset.c = c; d.setAttribute("role", "gridcell"); gridEl.appendChild(d);
+    }));
+    status();
+  }
+  function status() {
+    $("ws-count").textContent = W.found.size + " of " + W.words.length + " found";
+    const list = $("ws-list"); list.innerHTML = "";
+    W.words.forEach(w => {
+      const p = document.createElement("span"); p.className = "pill" + (W.found.has(w) ? " done" : ""); p.textContent = w; list.appendChild(p);
+    });
+  }
+  const cellOf = el => { const e = el && el.closest && el.closest(".ws-cell"); return e ? { r: +e.dataset.r, c: +e.dataset.c } : null; };
+  function line(a, b) {
+    const dr = b.r - a.r, dc = b.c - a.c, n = Math.max(Math.abs(dr), Math.abs(dc));
+    if (dr && dc && Math.abs(dr) !== Math.abs(dc)) return null;
+    return Array.from({ length: n + 1 }, (_, i) => ({ r: a.r + Math.sign(dr) * i, c: a.c + Math.sign(dc) * i }));
+  }
+  function select(cells) {
+    W.cur.forEach(({ r, c }) => { const cell = cellAt(r, c); if (cell) cell.classList.remove("sel"); });
+    W.cur = cells;
+    cells.forEach(({ r, c }) => { const cell = cellAt(r, c); if (cell) cell.classList.add("sel"); });
+  }
+  function finish(cells) {
+    const s = cells.map(({ r, c }) => W.grid[r][c]).join(""), rev = [...s].reverse().join("");
+    const hit = W.words.find(w => !W.found.has(w) && (w === s || w === rev));
+    if (hit) {
+      cells.forEach(({ r, c }) => { const cell = cellAt(r, c); if (cell) cell.classList.add("found"); });
+      W.found.add(hit); status();
+      if (W.found.size === W.words.length) {
+        W.over = true; FX.win();
+        setTimeout(() => openSheet("Grid cleared", msg("You found all ", String(W.words.length), " words."), [{ label: "New grid", fn: build }, { label: "Change word count", fn: () => show("wslobby") }, { label: "Main menu", fn: () => show("menu") }]), 700);
+      } else { FX.good(); notify("Found " + hit.toUpperCase(), (W.words.length - W.found.size) + " to go.", "good"); }
+    } else if (cells.length > 1) FX.bad();
+    select([]);
+  }
+  gridEl.addEventListener("pointerdown", e => {
+    const c = cellOf(e.target); if (!c || W.over) return;
+    e.preventDefault();
+    if (W.anchor) { const l = line(W.anchor, c); W.anchor = null; if (l && l.length > 1) { select(l); finish(l); return; } }
+    W.start = c; W.drag = true; select([c]); FX.key();
+  });
+  gridEl.addEventListener("pointermove", e => {
+    if (!W.drag) return;
+    const c = cellOf(document.elementFromPoint(e.clientX, e.clientY)); if (!c) return;
+    const l = line(W.start, c);
+    if (l && l.length !== W.cur.length) { select(l); FX.tap(); }
+  });
+  const up = () => {
+    if (!W.drag) return;
+    W.drag = false;
+    if (W.cur.length > 1) finish(W.cur); else W.anchor = W.start;
+  };
+  document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", () => { W.drag = false; select([]); });
+  $("ws-new").onclick = build;
+  const syncWsn = setupSlider("wsn", "wsn", 3, 15, n => n + " words", n => { const k = gridSize(n); $("wsn-hint").textContent = "Grid size: " + k + " × " + k; });
+  refreshWsLobby = () => { syncWsn(); $("ws-resume").hidden = W.over; $("ws-resume").textContent = "Resume game (" + W.words.length + " words)"; };
+  const startWs = () => { build(); show("wordsearch"); };
+  $("m-wordsearch").onclick = () => show("wslobby");
+  $("wslobby-back").onclick = () => { show("menu"); $("m-wordsearch").focus(); };
+  $("ws-start").onclick = () => !W.over
+    ? openSheet("Start a new game?", "Your current Word Search will be lost.", [{ label: "Cancel" }, { label: "New game", fn: startWs }])
+    : startWs();
+  $("ws-resume").onclick = () => show("wordsearch");
+  $("ws-menu").onclick = () => { show("menu"); $("m-wordsearch").focus(); };
+  window.addEventListener("resize", () => { if (current() === "wordsearch") sizeGrid(); });
+})();
+
+/* ==========================================================
+   5. NAVIGATION & KEYBOARD ROUTING
+   ========================================================== */
+$("play").onclick = () => { show("menu"); };
+$("home").onclick = () => { show("title"); };
+$("open-about").onclick = () => { show("about"); $("about-back").focus(); };
+$("about-back").onclick = () => { show("menu"); $("open-about").focus(); };
 $("open-settings").onclick = () => { show("settings"); $("settings-back").focus(); };
 $("settings-back").onclick = () => { show("menu"); $("open-settings").focus(); };
 $("how").onclick = () => {
@@ -680,36 +1287,48 @@ $("how").onclick = () => {
   };
   const p = t => { const e = document.createElement("p"); e.style.textAlign = "left"; e.textContent = t; return e; };
   const h = t => { const e = document.createElement("h3"); e.textContent = t; return e; };
-  box.append(h("Wordle"),
-    p("Guess the word in six tries. Pick 5 to 8 letters before you start. Every guess must be a real word."),
+  box.append(
+    h("Wordle"),
+    p("Guess the word in six tries. Slide to pick 5 to 16 letters before starting. Every guess must be a real word from the dictionary."),
     mk("correct", "A", "Right letter, right spot."),
     mk("present", "B", "The letter is in the word, but in a different spot."),
     mk("absent", "C", "The letter isn’t in the word."),
-    p("Hard mode: every hint you uncover must be used in your next guess."),
+    p("Hard mode (switch it on at the Wordle screen before you start): every hint uncovered must be used in your next guess."),
     h("Hangman"),
-    p("Pick letters to uncover the hidden word. Each wrong letter adds a part to the drawing, and six misses end the game."));
+    p("Slide to pick 5 to 16 letters, then choose letters or type on your keyboard to uncover the hidden word. Six misses end the game."),
+    h("Anagram"),
+    p("Tap or type the letters in order to spell a valid word. Hints cost points."),
+    h("Word Search"),
+    p("Choose how many words (3 to 15) are hidden; the grid gets bigger as the count grows. Drag across the letters or tap the first and last letter.")
+  );
   openSheet("How to play", box, [{ label: "Got it" }]);
 };
 
+/* Unified physical keyboard router */
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && backdrop.classList.contains("open")) { closeSheet(); return; }
-  if (e.key === "Tab" && backdrop.classList.contains("open")) {
-    const f = [...backdrop.querySelectorAll("button")], first = f[0], last = f[f.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  }
   if (backdrop.classList.contains("open") || e.ctrlKey || e.metaKey || e.altKey) return;
   const scr = current();
-  if (scr === "game") {
-    if (e.key === "Enter" || e.key === "Backspace") { e.preventDefault(); handleKey(e.key); }
-    else if (/^[a-z]$/i.test(e.key)) handleKey(e.key);
-  } else if (scr === "hangman" && /^[a-z]$/i.test(e.key)) hangKey(e.key.toLowerCase());
+  if (KEYS[scr]) KEYS[scr](e);
 });
+
 window.addEventListener("resize", () => { if (current() === "game") fit(); });
 
+
+/* Animated background: rising bubbles (paused when the tab is hidden) */
+(function bubbles() {
+  const fx = $("fx"), n = window.innerWidth < 600 ? 16 : 28, r = (a, b) => a + Math.random() * (b - a);
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement("span"), d = r(14, 32);
+    b.className = "bubble";
+    b.style.cssText = `--x:${r(0, 98).toFixed(1)}%;--s:${r(10, 64).toFixed(0)}px;--d:${d.toFixed(1)}s;--delay:${(-r(0, d)).toFixed(1)}s;--sway:${r(-7, 7).toFixed(1)}vw;--o:${r(.35, .8).toFixed(2)}`;
+    fx.appendChild(b);
+  }
+  document.addEventListener("visibilitychange", () => fx.classList.toggle("paused", document.hidden));
+})();
+
 loadSettings();
-if (!WORDS_OK) notify("Word list missing", "Keep words.js in the same folder as this page.", "bad");
+applyFx();
 </script>
-<noscript><p style="position:fixed;inset:auto 0 40% 0;text-align:center">Archive Word Games needs JavaScript to run.</p></noscript>
 </body>
 </html>
